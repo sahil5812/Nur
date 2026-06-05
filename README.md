@@ -15,29 +15,29 @@
 
 ```mermaid
 graph TD
-    subgraph Frontend [Client UI]
+    subgraph Frontend ["Client UI"]
         ReactDash["React Web Dashboard (Port 5173)"]
         PWAMobile["Installable PWA App"]
         CapAndroid["Native Android APK (Capacitor)"]
     end
 
-    subgraph Backend [FastAPI Server (Port 8000)]
+    subgraph Backend ["FastAPI Server (Port 8000)"]
         FastAPI["FastAPI API Gateway"]
         WSHandler["WebSocket Live Stream Handler"]
         AuthHandler["Auth Handler (JWT, OAuth, One Tap)"]
     end
 
-    subgraph CoreEngine [Trading & AI Orchestration]
+    subgraph CoreEngine ["Trading & AI Orchestration"]
         BotEngine["SaaS Bot Engine (main.py)"]
         RLAgent["PPO Reinforcement Learning Agent"]
         MT5["MetaTrader 5 Client Terminal"]
     end
 
-    subgraph Database [Storage & APIs]
+    subgraph Database ["Storage & APIs"]
         SQLite["SQLite WAL Database (trading.db)"]
     end
 
-    subgraph Messaging [Alerts & Interactive AI]
+    subgraph Messaging ["Alerts & Interactive AI"]
         Telegram["Telegram Bot (integrations/telegram_bot.py)"]
         Gemini["Gemini AI Natural Language Chat"]
     end
