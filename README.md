@@ -62,7 +62,7 @@ graph TD
 ## ✨ Core Features
 
 ### 1. Multi-Tenant SaaS Engine
-*   **User Isolation**: Dynamic loading of tenant configurations, risk multipliers, credentials (MT5 logins), and statistics.
+*   **User Isolation**: Dynamic loading of tenant configurations, risk multipliers, credentials (MT5 logins), and statistics. *Multi-tenant architecture is pre-configured, currently running in optimized single-user local mode for demo validation.*
 *   **Multi-tenant Database Schema**: SQLite database running in **WAL (Write-Ahead Logging)** mode for concurrent high-speed reads/writes without trade locking.
 
 ### 2. Premium Real-Time React Dashboard
@@ -114,7 +114,9 @@ Nur-main/
 ├── scripts/               # DB Backups, historical data fetchers
 ├── main.py                # Main system coordinator
 ├── bot_engine.py          # Multi-tenant live trading engine
-└── run_all.bat            # Standard launcher script
+├── run_all.bat            # Standard launcher script
+├── requirements.txt       # Python dependencies list
+└── .env.example           # Example environment variables template
 ```
 
 ---
@@ -205,6 +207,12 @@ Run evaluations on the unseen test split:
 python -m rl.evaluate
 ```
 This outputs performance indicators (Sharpe ratio, max drawdown, win rate) and saves the equity curve plot to `rl/results/equity_curve.png`.
+
+---
+
+## 🧠 Mathematical & RL Framework
+The system optimizes trade execution using Proximal Policy Optimization (PPO). The reward function is modeled as:
+$$R_t = \Delta \text{Equity}_t - (\alpha \times \text{Drawdown}_t) - (\beta \times \text{Transaction Costs})$$
 
 ---
 
