@@ -1,0 +1,18 @@
+{
+  "short_name": "NurBot",
+  "name": "Nur Trading Bot Dashboard",
+  "description": "Nur Trading Bot real-time dashboard — XAUUSD AI trading system",
+  "icons": [
+    {
+      "src": "icon.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#0a0d14",
+  "theme_color": "#0a0d14",
+  "display": "standalone",
+  "orientation": "portrait"
+}

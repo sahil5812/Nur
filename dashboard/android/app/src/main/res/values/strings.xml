@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">NurBot</string>
+    <string name="title_activity_main">NurBot</string>
+    <string name="package_name">bot.nur.trading</string>
+    <string name="custom_url_scheme">bot.nur.trading</string>
+</resources>

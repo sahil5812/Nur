@@ -1,0 +1,8 @@
+# Docker-specific Python dependencies
+# (beyond the base requirements.txt)
+
+# PostgreSQL adapter for production database migration
+psycopg2-binary>=2.9.9
+
+# Async HTTP client (for container health checks)
+httpx>=0.27.0

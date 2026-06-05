@@ -1,0 +1,43 @@
+# Docker ignore — keep build context lean
+.venv/
+venv/
+venv_backup/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+.gemini/
+
+# Git
+.git/
+.gitignore
+
+# Logs (regenerated at runtime)
+logs/
+*.log
+
+# Database (mounted as volume)
+database/nur_trading.db
+database/*.db-wal
+database/*.db-shm
+
+# Documentation
+*.md
+!QUICK_START.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Dashboard node_modules (rebuild in container if needed)
+dashboard/node_modules/
+dashboard/dist/
+
+# Large analysis files
+COMPLETE_PROJECT_CODE.txt
+all_project_code.txt
+vulture_output.txt

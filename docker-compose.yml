@@ -1,0 +1,106 @@
+# ============================================================
+# Nur Trading Bot — Docker Compose (Production VPS)
+# ============================================================
+# Usage:
+#   docker compose up -d          # Start all services
+#   docker compose logs -f bot    # Follow bot logs
+#   docker compose logs -f api    # Follow API logs
+#   docker compose down           # Stop all services
+# ============================================================
+
+services:
+
+  # ── Bot Engine Service ──────────────────────────────────────
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nur-bot-engine
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+    environment:
+      SERVICE_MODE: bot
+      # ── Secrets (override via .env or docker secrets) ────
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      ALLOWED_CHAT_IDS: ${ALLOWED_CHAT_IDS}
+      MT5_LOGIN: ${MT5_LOGIN}
+      MT5_PASSWORD: ${MT5_PASSWORD}
+      MT5_SERVER: ${MT5_SERVER}
+      # ── Trading Config ──────────────────────────────────
+      PAPER_TRADING: ${PAPER_TRADING:-true}
+      SYMBOL: ${SYMBOL:-XAUUSD}
+      RISK_PERCENT: ${RISK_PERCENT:-1.0}
+      DAILY_LOSS_LIMIT: ${DAILY_LOSS_LIMIT:--50.0}
+      DAILY_PROFIT_TARGET: ${DAILY_PROFIT_TARGET:-100.0}
+      MAX_TRADES_PER_DAY: ${MAX_TRADES_PER_DAY:-5}
+      MIN_SCORE_TO_TRADE: ${MIN_SCORE_TO_TRADE:-70}
+      EMA_PERIOD: ${EMA_PERIOD:-200}
+      ATR_PERIOD: ${ATR_PERIOD:-14}
+      COOLDOWN_SECONDS: ${COOLDOWN_SECONDS:-30}
+      # ── Database ────────────────────────────────────────
+      DATABASE_URL: ${DATABASE_URL:-}
+    volumes:
+      - nur-db:/app/database
+      - nur-logs:/app/logs
+      - nur-data:/app/data
+      - nur-models:/app/rl/models
+    networks:
+      - nur-net
+    depends_on:
+      api:
+        condition: service_healthy
+
+  # ── FastAPI Dashboard Service ───────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nur-api-dashboard
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    environment:
+      SERVICE_MODE: api
+      TELEGRAM_TOKEN: ${TELEGRAM_TOKEN}
+      ALLOWED_CHAT_IDS: ${ALLOWED_CHAT_IDS}
+      MT5_LOGIN: ${MT5_LOGIN}
+      MT5_PASSWORD: ${MT5_PASSWORD}
+      MT5_SERVER: ${MT5_SERVER}
+      PAPER_TRADING: ${PAPER_TRADING:-true}
+      DATABASE_URL: ${DATABASE_URL:-}
+    ports:
+      - "8000:8000"
+    volumes:
+      - nur-db:/app/database
+      - nur-logs:/app/logs
+    networks:
+      - nur-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# ── Shared Persistent Volumes ──────────────────────────────────
+volumes:
+  nur-db:
+    driver: local
+  nur-logs:
+    driver: local
+  nur-data:
+    driver: local
+  nur-models:
+    driver: local
+
+# ── Internal Network ──────────────────────────────────────────
+networks:
+  nur-net:
+    driver: bridge

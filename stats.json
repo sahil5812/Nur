@@ -1,0 +1,21 @@
+{
+    "total_trades": 0,
+    "today_trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "win_rate": 0.0,
+    "total_pnl": 0.0,
+    "today_pnl": 0.0,
+    "best_win": 0.0,
+    "worst_loss": 0.0,
+    "win_streak": 0,
+    "loss_streak": 0,
+    "max_win_streak": 0,
+    "max_loss_streak": 0,
+    "avg_win": 0.0,
+    "avg_loss": 0.0,
+    "gross_win": 0.0,
+    "gross_loss": 0.0,
+    "trading_locked": false,
+    "last_reset_day": "2026-04-17"
+}
