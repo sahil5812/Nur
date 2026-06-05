@@ -50,32 +50,35 @@ WARMUP = max(EMA_PERIOD, MACD_SLOW + MACD_SIGNAL, ATR_PERIOD + 1, RSI_PERIOD + 1
 
 def _load_csv(csv_path: str | Path) -> pd.DataFrame:
     """
-    Load the project's semicolon-delimited XAUUSD M1 CSV.
-
-    Expected header:
-      <TICKER>;<PER>;<DATE>;<TIME>;<OPEN>;<HIGH>;<LOW>;<CLOSE>;<VOL>
-
-    Data rows look like:
-      "2024.01.01 00:00";2030.33;2030.46;2030.19;2030.36;53;0;25
-
-    The first field is a quoted datetime combining DATE+TIME.
-    Remaining fields map to OPEN, HIGH, LOW, CLOSE, VOL, col6, col7.
+    Load XAUUSD M1 CSV, supporting both legacy semicolon-delimited files
+    and the new comma-separated MT5-downloaded files.
     """
-    df = pd.read_csv(
-        csv_path,
-        sep=";",
-        header=0,
-        names=["datetime", "open", "high", "low", "close", "volume", "col6", "col7"],
-        dtype={
-            "open": float, "high": float, "low": float,
-            "close": float, "volume": float,
-        },
-        skiprows=1,       # skip the original header row
-    )
-    # Strip quotes from datetime strings
-    df["datetime"] = df["datetime"].str.strip('"')
-    df["datetime"] = pd.to_datetime(df["datetime"], format="%Y.%m.%d %H:%M")
-    df = df.drop(columns=["col6", "col7"], errors="ignore")
+    with open(csv_path, 'r', encoding='utf-8', errors='ignore') as f:
+        first_line = f.readline()
+    
+    if ';' in first_line:
+        # Legacy semicolon-separated format
+        df = pd.read_csv(
+            csv_path,
+            sep=";",
+            header=0,
+            names=["datetime", "open", "high", "low", "close", "volume", "col6", "col7"],
+            dtype={
+                "open": float, "high": float, "low": float,
+                "close": float, "volume": float,
+            },
+            skiprows=1,
+        )
+        df["datetime"] = df["datetime"].str.strip('"')
+        df["datetime"] = pd.to_datetime(df["datetime"], format="%Y.%m.%d %H:%M")
+        df = df.drop(columns=["col6", "col7"], errors="ignore")
+    else:
+        # New comma-separated format from fetch_history.py
+        df = pd.read_csv(csv_path)
+        if 'time' in df.columns:
+            df = df.rename(columns={'time': 'datetime'})
+        df["datetime"] = pd.to_datetime(df["datetime"])
+        
     df = df.dropna(subset=["close"]).reset_index(drop=True)
     return df
 
@@ -193,11 +196,23 @@ class XAUUSDTradingEnv(gym.Env):
         self,
         csv_path: str | Path | None = None,
         episode_length: int = EPISODE_LENGTH,
+        split: str = 'train',  # 'train', 'val', 'test', or 'full'
     ):
         super().__init__()
 
         if csv_path is None:
-            csv_path = _PROJECT_ROOT / "data" / "historical_xauusd_m1.csv"
+            split_files = {
+                'train': 'data/train_xauusd_m1.csv',
+                'val':   'data/val_xauusd_m1.csv',
+                'test':  'data/test_xauusd_m1.csv',
+                'full':  'data/historical_xauusd_m1.csv'
+            }
+            csv_path = _PROJECT_ROOT / split_files.get(split, 'data/train_xauusd_m1.csv')
+            
+            # Fallback to full data if split file doesn't exist
+            if not Path(csv_path).exists():
+                csv_path = _PROJECT_ROOT / "data" / "historical_xauusd_m1.csv"
+                
         self._csv_path = Path(csv_path)
 
         self.episode_length = episode_length
@@ -372,4 +387,4 @@ if __name__ == "__main__":
             break
 
     print(f"  Ran 100 steps, total reward: {total_reward:.2f}")
-    print("  ✅ Environment works!")
+    print("  [OK] Environment works!")

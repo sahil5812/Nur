@@ -101,7 +101,7 @@ def main() -> None:
     print("=" * 60)
 
     # ---- Environment -------------------------------------------------
-    env = XAUUSDTradingEnv()
+    env = XAUUSDTradingEnv(split='train')
 
     # ---- PPO hyperparameters -----------------------------------------
     model = PPO(
@@ -130,7 +130,26 @@ def main() -> None:
     model_dir.mkdir(parents=True, exist_ok=True)
     model_path = model_dir / "ppo_xauusd.zip"
     model.save(str(model_path))
-    print(f"\n✓ Model saved to {model_path}")
+    print(f"\n[OK] Model saved to {model_path}")
+
+    # ---- Validation --------------------------------------------------
+    print("\nValidation set pe check kar raha hoon...")
+    val_env = XAUUSDTradingEnv(split='val')
+    # Run 10 episodes on validation data
+    val_rewards = []
+    for _ in range(10):
+        obs, _ = val_env.reset()
+        done = False
+        ep_reward = 0
+        while not done:
+            action, _ = model.predict(obs, deterministic=True)
+            obs, reward, terminated, truncated, _ = val_env.step(action)
+            ep_reward += reward
+            done = terminated or truncated
+        val_rewards.append(ep_reward)
+    
+    val_mean_reward = sum(val_rewards) / len(val_rewards)
+    print(f"Validation Mean Reward: {val_mean_reward:.4f}")
 
     # ---- Save training log -------------------------------------------
     final_rewards = callback.episode_rewards[-100:]
@@ -143,6 +162,7 @@ def main() -> None:
         "device": device,
         "episode_rewards": callback.episode_rewards,
         "final_mean_reward": round(final_mean, 6),
+        "val_mean_reward": round(val_mean_reward, 6),
         "total_episodes": len(callback.episode_rewards),
         "training_time_seconds": round(elapsed, 2),
     }
@@ -150,7 +170,7 @@ def main() -> None:
     log_path = model_dir / "training_log.json"
     with open(log_path, "w", encoding="utf-8") as f:
         json.dump(log_data, f, indent=2)
-    print(f"✓ Training log saved to {log_path}")
+    print(f"[OK] Training log saved to {log_path}")
 
     # ---- Summary -----------------------------------------------------
     hours, rem = divmod(elapsed, 3600)

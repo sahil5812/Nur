@@ -29,7 +29,7 @@ PROJECT_ROOT = str(Path(__file__).resolve().parent.parent)
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from rl.trading_env import XAUUSDTradingEnv  # noqa: E402
+from rl.trading_env import XAUUSDTradingEnv, WARMUP  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
@@ -92,23 +92,23 @@ def evaluate(model_path: str) -> dict[str, Any]:
         sys.exit(1)
 
     model = PPO.load(str(model_file))
-    print(f"✓ Model loaded from {model_file}")
+    print(f"[OK] Model loaded from {model_file}")
 
     # ---- Build environment -------------------------------------------
-    env = XAUUSDTradingEnv()
+    print("Testing on: UNSEEN TEST DATA (last 15%)")
+    print("This is the true performance metric.")
+    env = XAUUSDTradingEnv(split='test')
 
-    # Determine split index (80 / 20) and configure OOS bounds
+    # Configure bounds to cover the entire test split (from WARMUP to end)
     total_steps: int = env._n
-    split_idx: int = int(total_steps * 0.80)
-    
     env.reset()
-    env._start_idx = split_idx
-    env.episode_length = total_steps - split_idx - 1
+    env._start_idx = WARMUP
+    env.episode_length = total_steps - WARMUP - 1
     obs = env._get_obs()
 
     print(f"  Total bars       : {total_steps:,}")
-    print(f"  OOS start index  : {split_idx:,}")
-    print(f"  OOS bars         : {env.episode_length:,}")
+    print(f"  WARMUP offset    : {WARMUP}")
+    print(f"  Evaluation bars  : {env.episode_length:,}")
 
     # ---- Run episode -------------------------------------------------
     balance = 10000.0
@@ -117,7 +117,7 @@ def evaluate(model_path: str) -> dict[str, Any]:
     current_position: int = 0  # 0=flat, 1=long, 2=short
     entry_price: float = 0.0
 
-    print(f"\n  → Entered OOS region at step {split_idx:,}")
+    print(f"\n  -> Entered OOS region at step {WARMUP}")
 
     done: bool = False
     while not done:
@@ -205,7 +205,7 @@ def evaluate(model_path: str) -> dict[str, Any]:
         fig.tight_layout()
         fig.savefig(str(plot_path), dpi=150)
         plt.close(fig)
-        print(f"\n✓ Equity curve saved to {plot_path}")
+        print(f"\n[OK] Equity curve saved to {plot_path}")
 
     return metrics
 
