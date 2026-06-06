@@ -216,24 +216,79 @@ This executes backtests for individual agents and the combined **HMM-routed MARL
 
 ## 🧠 Mathematical & RL Framework
 
-### 1. Market Regime Router (HMM Classifier)
-The framework partitions market regimes into hidden states using a Gaussian Hidden Markov Model:
-*   **Observations ($X_t$)**: 3D feature vector $\mathbf{x}_t = \left[ \Delta \log(\text{Close}_t), \text{ATR}_t^{\text{norm}}, \text{RSI}_t^{\text{norm}} \right]^T$.
-*   **Hidden States ($S_t$)**:
-    *   $S_t = 0$: **RANGING (Range)** — Low-volatility mean-reverting regime.
-    *   $S_t = 1$: **TRENDING (Trend)** — High-volatility directional regime.
-*   **Decoding**: The dynamic routing in `RLAgent` uses a rolling 100-candle feature window and a Viterbi decoder to determine the current state sequence:
-    $$\hat{s}_{1:T} = \arg\max_{s_{1:T}} P(s_{1:T} \mid x_{1:T})$$
+The system partitions the problem of trading into a **Hierarchical Multi-Agent Reinforcement Learning (MARL)** architecture. Decoupling market regime detection from execution allows the models to optimize for specific market conditions instead of trying to learn a single compromise policy.
 
-### 2. Specialized Execution Agents (PPO)
-*   **Observation Space ($\mathbf{o}_t$)**: Normalized 7D state vector:
-    $$\mathbf{o}_t = [ \text{RSI}^{\text{norm}}, \text{MACD\_hist}^{\text{norm}}, \text{EMA\_distance}^{\text{norm}}, \text{ATR}^{\text{norm}}, \text{hour}^{\text{norm}}, \text{session}^{\text{norm}}, \text{position}^{\text{norm}} ]$$
-*   **Action Space ($\mathbf{a}_t$)**: Discrete execution actions: $\{0: \text{HOLD}, 1: \text{BUY}, 2: \text{SELL}\}$.
-*   **Regime-Adaptive PPO Reward Functions**:
-    *   **Trend Agent**: Rewards holding positions that align with the H1 trend, penalizing premature exits and trend-chasing reversals.
-    *   **Range Agent**: Rewards quick scalps near support/resistance lines and penalizes holding trades through large drawdowns.
-    *   **General Formulation**:
-        $$R_t = \Delta \text{Equity}_t - (\alpha \times \text{Drawdown}_t) - (\beta \times \text{Transaction Costs})$$
+```mermaid
+graph TD
+    MarketData["Market Ticks (RSI, MACD, ATR)"] --> Agent1["Agent 1: HMM Router (Market Regime Classifier)"]
+    Agent1 -->|State 0: RANGE| Agent3["Agent 3: Range PPO Agent (ppo_range)"]
+    Agent1 -->|State 1: TREND| Agent2["Agent 2: Trend PPO Agent (ppo_trend)"]
+    Agent1 -->|Fallback / HMM Error| Agent4["Agent 4: Fallback PPO Agent (ppo_xauusd)"]
+    
+    Agent3 -->|Action| TradeExec["Order Execution Loop (bot_engine.py)"]
+    Agent2 -->|Action| TradeExec
+    Agent4 -->|Action| TradeExec
+```
+
+---
+
+### 1. Agent 1: HMM Classifier (Market Regime Router)
+*   **Role**: Acts as the meta-controller. It dynamically partitions market structures and routes live execution commands to the PPO agent optimized for that specific state.
+*   **Observation Vector ($X_t$)**: 3-dimensional momentum and volatility vector:
+    $$\mathbf{x}_t = \left[ \Delta \log(\text{Close}_t), \text{ATR}_t^{\text{norm}}, \text{RSI}_t^{\text{norm}} \right]^T$$
+*   **Decoded Regimes ($S_t$)**:
+    *   $S_t = 0$: **RANGING (Range)** (Mean normalized ATR $\approx -0.54$) — Low-volatility, mean-reverting consolidation.
+    *   $S_t = 1$: **TRENDING (Trend)** (Mean normalized ATR $\approx +0.86$) — High-volatility, directional breakouts.
+*   **Decoding Engine**: Runs a rolling 100-candle Viterbi sequence decoder to find the optimal path of hidden states:
+    $$\hat{s}_{1:T} = \arg\max_{s_{1:T}} P(s_{1:T} \mid x_{1:T})$$
+    If the rolling window has fewer than 10 candles, it instantly falls back to a point PDF (Probability Density Function) density check:
+    $$\hat{s}_t = \arg\max_{i \in \{0, 1\}} \mathcal{N}(\mathbf{x}_t \mid \boldsymbol{\mu}_i, \boldsymbol{\Sigma}_i)$$
+
+---
+
+### 2. Agent 2: Trend PPO Agent (`ppo_trend`)
+*   **Role**: Specialized in trend-following, momentum riding, and breakout execution during high-volatility trending markets.
+*   **Training Filter**: Trained on environment where `target_regime = 'trend'`. When the fitted HMM classifies a state as $S_t = 0$ (Range), the environment overrides all agent actions to `HOLD`. This isolates the model so it never learns or receives rewards from ranging consolidation, preventing "whipsaw" losses.
+*   **Observation Space ($\mathbf{o}_t$)**: Normalized 7D state vector.
+*   **Strategy & Behavior**:
+    *   Optimized to ride long trends on M1 that align with macro H1/H4 timeframes.
+    *   Rewarded for holding winning positions longer to capture large pip ranges.
+    *   Highly penalized for opening counter-trend trades.
+
+---
+
+### 3. Agent 3: Range PPO Agent (`ppo_range`)
+*   **Role**: Specialized in mean-reversion, pullback buys, and rally sells during low-volatility ranging markets.
+*   **Training Filter**: Trained on environment where `target_regime = 'range'`. When the fitted HMM classifies a state as $S_t = 1$ (Trend), the environment overrides all agent actions to `HOLD`. This isolates the model so it never learns or receives rewards from breakout moves where mean reversion would fail.
+*   **Observation Space ($\mathbf{o}_t$)**: Normalized 7D state vector.
+*   **Strategy & Behavior**:
+    *   Optimized to buy support levels (oversold RSI) and sell resistance levels (overbought RSI).
+    *   Implements a time-decay holding penalty ($R_{\text{hold}} = -0.1$ per tick) to discourage long holds, forcing the model to take quick scalps.
+    *   Highly penalized for trend-chasing behaviors.
+
+---
+
+### 4. Agent 4: Fallback PPO Agent (`ppo_xauusd`)
+*   **Role**: Universal generalist that acts as a backup safety net.
+*   **Training Filter**: Trained on the full 3-year historical dataset with no HMM filtering (`target_regime = None`).
+*   **Strategy & Behavior**:
+    *   Learns a generalized compromise policy across all market regimes.
+    *   Used as a fallback when HMM confidence is low, when feature windows are cold-starting, or under system error conditions.
+
+---
+
+### 5. Common Parameters & General Reward Formulation
+*   **Observation Vector Normalization**:
+    *   $\text{RSI}^{\text{norm}} = \text{clip}((\text{RSI} - 50) / 50, -1.0, 1.0)$
+    *   $\text{MACD\_hist}^{\text{norm}} = \tanh(\text{MACD\_hist})$
+    *   $\text{EMA\_distance}^{\text{norm}} = \text{clip}((\text{Price} - \text{EMA}) / \text{EMA} \times 100, -1.0, 1.0)$
+    *   $\text{ATR}^{\text{norm}} = \text{clip}((\text{ATR} - 1.5) / 1.0, -1.0, 1.0)$
+    *   $\text{Hour}^{\text{norm}} = (\text{Hour} / 23 \times 2) - 1.0$
+    *   $\text{Session}^{\text{norm}} = (\text{Session} / 3 \times 2) - 1.0$ (0: Asian, 1: London, 2: NY)
+    *   $\text{Position}^{\text{norm}} = \{0: 0.0, 1: 1.0, 2: -1.0\}$ (Flat, Long, Short)
+*   **Reward Function**:
+    $$R_t = \Delta \text{Equity}_t - (\alpha \times \text{Drawdown}_t) - (\beta \times \text{Transaction Costs})$$
+    Where $\alpha = 0.5$ penalizes floating drawdowns, and $\beta = 2.0$ represents invalid actions (e.g., trying to buy when already in a buy trade).
 
 ---
 
