@@ -85,23 +85,106 @@ def parse_args() -> argparse.Namespace:
         default=2_000_000,
         help="Total training timesteps (default: 2,000,000).",
     )
+    parser.add_argument(
+        "--n-envs",
+        type=int,
+        default=4,
+        help="Number of parallel environments to run (default: 4). Use 1 to disable parallelization.",
+    )
+    parser.add_argument(
+        "--target-regime",
+        type=str,
+        default="none",
+        choices=["none", "trend", "range"],
+        help="Target regime filter for specialized training (none, trend, range).",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     """Entry-point: build env, train PPO, save model & logs."""
+    import numpy as np
+    from rl.trading_env import (
+        _load_csv, _compute_ema_series, _compute_atr_series,
+        _compute_rsi_series, EMA_PERIOD, ATR_PERIOD, RSI_PERIOD
+    )
+
     args = parse_args()
     total_timesteps: int = args.timesteps
+    n_envs: int = args.n_envs
+    target_regime: str = args.target_regime
 
     print("=" * 60)
-    print("  PPO Training – XAUUSD Trading Agent")
+    print("  3-Agent MARL Training – XAUUSD Trading Agent")
     print("=" * 60)
     print(f"  Device          : {device}")
     print(f"  Total timesteps : {total_timesteps:,}")
+    print(f"  Parallel Envs   : {n_envs}")
+    print(f"  Target Regime   : {target_regime.upper()}")
     print("=" * 60)
 
+    model_dir = Path(PROJECT_ROOT) / "rl" / "models"
+    model_dir.mkdir(parents=True, exist_ok=True)
+    hmm_model_path = model_dir / "hmm_model.json"
+
+    # ---- HMM Fitting (Phase 1) ---------------------------------------
+    print("\nTraining HMM Classifier to detect market regimes...")
+    train_csv = Path(PROJECT_ROOT) / "data" / "train_xauusd_m1.csv"
+    if not train_csv.exists():
+        train_csv = Path(PROJECT_ROOT) / "data" / "historical_xauusd_m1.csv"
+
+    if train_csv.exists():
+        df_train = _load_csv(train_csv)
+        closes_tr = df_train["close"].values.astype(np.float64)
+        highs_tr = df_train["high"].values.astype(np.float64)
+        lows_tr = df_train["low"].values.astype(np.float64)
+
+        ema_tr = _compute_ema_series(closes_tr, EMA_PERIOD)
+        atr_tr = _compute_atr_series(highs_tr, lows_tr, closes_tr, ATR_PERIOD)
+        valid_atr = atr_tr[~np.isnan(atr_tr)]
+        atr_mean_tr = float(np.mean(valid_atr)) if len(valid_atr) > 0 else 2.0
+        atr_std_tr = float(np.std(valid_atr)) + 1e-8 if len(valid_atr) > 0 else 1.0
+
+        atr_tr = np.where(np.isnan(atr_tr), atr_mean_tr, atr_tr)
+        rsi_tr = _compute_rsi_series(closes_tr, RSI_PERIOD)
+
+        log_ret = np.zeros(len(closes_tr))
+        log_ret[1:] = np.diff(np.log(np.maximum(closes_tr, 1e-8)))
+
+        atr_n = np.clip((atr_tr - atr_mean_tr) / atr_std_tr, -3.0, 3.0)
+        rsi_n = np.clip((rsi_tr - 50.0) / 50.0, -1.0, 1.0)
+
+        features = np.column_stack([log_ret, atr_n, rsi_n])
+
+        from rl.hmm_classifier import GaussianHMM
+        hmm = GaussianHMM(n_states=2)
+        hmm.fit(features, max_iter=20)
+        hmm.save(hmm_model_path)
+        print(f"[OK] HMM Model saved to {hmm_model_path}")
+    else:
+        print("[WARNING] Training CSV not found. Skipping HMM fitting.")
+
     # ---- Environment -------------------------------------------------
-    env = XAUUSDTradingEnv(split='train')
+    env_regime = None if target_regime == "none" else target_regime
+    
+    if n_envs > 1:
+        from stable_baselines3.common.env_util import make_vec_env
+        from stable_baselines3.common.vec_env import SubprocVecEnv
+        
+        def make_env():
+            return XAUUSDTradingEnv(
+                split='train',
+                target_regime=env_regime,
+                hmm_model_path=hmm_model_path
+            )
+            
+        env = make_vec_env(make_env, n_envs=n_envs, vec_env_cls=SubprocVecEnv)
+    else:
+        env = XAUUSDTradingEnv(
+            split='train',
+            target_regime=env_regime,
+            hmm_model_path=hmm_model_path
+        )
 
     # ---- PPO hyperparameters -----------------------------------------
     model = PPO(
@@ -126,16 +209,18 @@ def main() -> None:
     elapsed = time.time() - start_time
 
     # ---- Save model --------------------------------------------------
-    model_dir = Path(PROJECT_ROOT) / "rl" / "models"
-    model_dir.mkdir(parents=True, exist_ok=True)
-    model_path = model_dir / "ppo_xauusd.zip"
+    model_filename = f"ppo_{target_regime}.zip" if target_regime != "none" else "ppo_xauusd.zip"
+    model_path = model_dir / model_filename
     model.save(str(model_path))
     print(f"\n[OK] Model saved to {model_path}")
 
     # ---- Validation --------------------------------------------------
     print("\nValidation set pe check kar raha hoon...")
-    val_env = XAUUSDTradingEnv(split='val')
-    # Run 10 episodes on validation data
+    val_env = XAUUSDTradingEnv(
+        split='val',
+        target_regime=env_regime,
+        hmm_model_path=hmm_model_path
+    )
     val_rewards = []
     for _ in range(10):
         obs, _ = val_env.reset()
@@ -167,7 +252,8 @@ def main() -> None:
         "training_time_seconds": round(elapsed, 2),
     }
 
-    log_path = model_dir / "training_log.json"
+    log_filename = f"training_log_{target_regime}.json" if target_regime != "none" else "training_log.json"
+    log_path = model_dir / log_filename
     with open(log_path, "w", encoding="utf-8") as f:
         json.dump(log_data, f, indent=2)
     print(f"[OK] Training log saved to {log_path}")

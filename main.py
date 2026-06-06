@@ -7,13 +7,12 @@ import shared_state
 print("PYTHON EXECUTABLE:", sys.executable)
 print("PYTHON VERSION:", sys.version)
 
-from core.engine import TradingEngine
+import bot_engine
 from integrations.telegram_bot import run_telegram
 
 def run_trading_engine():
     try:
-        engine = TradingEngine()
-        engine.run()
+        bot_engine.main()
     except Exception as e:
         print(f"❌ Trading Engine crashed on startup: {e}")
 

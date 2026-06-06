@@ -40,26 +40,60 @@ _POSITION_MAP: dict[int, float] = {
 
 
 class RLAgent:
-    """Inference wrapper around the trained PPO trading model.
+    """Inference router wrapper around the trained PPO MARL trading models.
 
     Parameters:
-        model_path: Path to the saved ``.zip`` model file.  Falls back to
-            the default ``rl/models/ppo_xauusd.zip`` when *None*.
+        model_dir: Path to the models directory. Falls back to
+            the default ``rl/models/`` when *None*.
     """
 
-    def __init__(self, model_path: Path | str | None = None) -> None:
-        resolved: Path = Path(model_path) if model_path else _MODEL_PATH
-        self._model: PPO | None = None
+    def __init__(self, model_dir: Path | str | None = None) -> None:
+        resolved_dir = Path(model_dir) if model_dir else Path(__file__).resolve().parent / "models"
+        self._hmm = None
+        self._ppo_trend = None
+        self._ppo_range = None
+        self._ppo_fallback = None
         self.has_manual_override = False
+        self._hmm_features = []
+        self._last_candle_time = None
 
-        if resolved.is_file():
-            self._model = PPO.load(str(resolved))
-            logger.info("PPO model loaded from %s", resolved)
-        else:
-            logger.warning(
-                "Model file not found at %s – agent will default to HOLD.",
-                resolved,
-            )
+        # Load HMM model
+        hmm_path = resolved_dir / "hmm_model.json"
+        if hmm_path.is_file():
+            try:
+                from rl.hmm_classifier import GaussianHMM
+                self._hmm = GaussianHMM()
+                self._hmm.load(hmm_path)
+                logger.info("MARL HMM model loaded from %s", hmm_path)
+            except Exception as e:
+                logger.error("Failed to load HMM model: %s", e)
+
+        # Load Trend PPO
+        trend_path = resolved_dir / "ppo_trend.zip"
+        if trend_path.is_file():
+            try:
+                self._ppo_trend = PPO.load(str(trend_path))
+                logger.info("MARL Trend PPO model loaded from %s", trend_path)
+            except Exception as e:
+                logger.error("Failed to load Trend PPO: %s", e)
+            
+        # Load Range PPO
+        range_path = resolved_dir / "ppo_range.zip"
+        if range_path.is_file():
+            try:
+                self._ppo_range = PPO.load(str(range_path))
+                logger.info("MARL Range PPO model loaded from %s", range_path)
+            except Exception as e:
+                logger.error("Failed to load Range PPO: %s", e)
+
+        # Load Fallback/Universal PPO
+        fallback_path = resolved_dir / "ppo_xauusd.zip"
+        if fallback_path.is_file():
+            try:
+                self._ppo_fallback = PPO.load(str(fallback_path))
+                logger.info("MARL Fallback PPO model loaded from %s", fallback_path)
+            except Exception as e:
+                logger.error("Failed to load Fallback PPO: %s", e)
 
     # ------------------------------------------------------------------
     # Observation builder
@@ -99,6 +133,52 @@ class RLAgent:
         )
         return obs
 
+    def _get_hmm_state(self, state_dict: dict[str, Any]) -> int:
+        """Decodes the current regime state (0 for RANGE, 1 for TREND) using HMM."""
+        if self._hmm is None:
+            return 0  # default fallback to Range (or we could default to Trend)
+            
+        log_ret = state_dict.get("log_ret", 0.0)
+        atr_n = np.clip(state_dict.get("atr_normalized", 0.0), -3.0, 3.0)
+        rsi = state_dict.get("rsi", 50.0)
+        rsi_n = np.clip((rsi - 50.0) / 50.0, -1.0, 1.0)
+        
+        feat = np.array([log_ret, atr_n, rsi_n], dtype=np.float32)
+        
+        # Deduplication based on candle time
+        candle_time = state_dict.get("candle_time")
+        should_append = False
+        if candle_time is not None:
+            if candle_time != self._last_candle_time:
+                self._last_candle_time = candle_time
+                should_append = True
+        else:
+            # If no candle time, check if feature has changed or buffer is empty
+            if not self._hmm_features or not np.allclose(self._hmm_features[-1], feat):
+                should_append = True
+                
+        if should_append:
+            self._hmm_features.append(feat)
+            if len(self._hmm_features) > 100:
+                self._hmm_features.pop(0)
+                
+        # Sequence decoding vs point PDF fallback
+        if len(self._hmm_features) >= 10:
+            try:
+                states = self._hmm.predict(np.array(self._hmm_features))
+                return int(states[-1])
+            except Exception as e:
+                logger.warning("HMM predict failed, falling back to PDF: %s", e)
+                
+        # PDF fallback
+        try:
+            p0 = self._hmm._pdf(feat, 0)
+            p1 = self._hmm._pdf(feat, 1)
+            return 0 if p0 > p1 else 1
+        except Exception as e:
+            logger.warning("HMM PDF computation failed: %s", e)
+            return 0
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
@@ -108,7 +188,7 @@ class RLAgent:
         Args:
             state_dict: Dictionary with keys ``rsi``, ``macd_hist``,
                 ``ema_distance_pct``, ``atr_normalized``, ``hour``,
-                ``session``, ``position``.
+                ``session``, ``position``, and ``log_ret``.
 
         Returns:
             One of ``'HOLD'``, ``'BUY'``, ``'SELL'``.
@@ -117,11 +197,27 @@ class RLAgent:
             state_dict["is_manual_active"] = 1
             return "HOLD"
 
-        if self._model is None:
+        # 1. Determine active model using HMM routing
+        model = self._ppo_fallback
+        
+        if self._hmm is not None:
+            try:
+                hmm_state = self._get_hmm_state(state_dict)
+                if hmm_state == 1 and self._ppo_trend is not None:
+                    model = self._ppo_trend
+                elif hmm_state == 0 and self._ppo_range is not None:
+                    model = self._ppo_range
+            except Exception as e:
+                logger.warning("HMM prediction failed: %s — using fallback", e)
+
+        if model is None:
+            model = self._ppo_trend or self._ppo_range or self._ppo_fallback
+
+        if model is None:
             return "HOLD"
 
         obs = self._build_observation(state_dict)
-        action, _ = self._model.predict(obs, deterministic=True)
+        action, _ = model.predict(obs, deterministic=True)
         return _ACTION_MAP.get(int(action), "HOLD")
 
     def get_confidence(self, state_dict: dict[str, Any]) -> dict[str, float]:
@@ -138,15 +234,29 @@ class RLAgent:
             state_dict["is_manual_active"] = 1
             return {"HOLD": 1.0, "BUY": 0.0, "SELL": 0.0}
 
-        if self._model is None:
+        model = self._ppo_fallback
+        if self._hmm is not None:
+            try:
+                hmm_state = self._get_hmm_state(state_dict)
+                if hmm_state == 1 and self._ppo_trend is not None:
+                    model = self._ppo_trend
+                elif hmm_state == 0 and self._ppo_range is not None:
+                    model = self._ppo_range
+            except Exception:
+                pass
+
+        if model is None:
+            model = self._ppo_trend or self._ppo_range or self._ppo_fallback
+
+        if model is None:
             return {"HOLD": 1.0, "BUY": 0.0, "SELL": 0.0}
 
         try:
             obs = self._build_observation(state_dict)
             obs_tensor = torch.as_tensor(obs, dtype=torch.float32).unsqueeze(0)
-            obs_tensor = obs_tensor.to(self._model.policy.device)
+            obs_tensor = obs_tensor.to(model.policy.device)
 
-            distribution = self._model.policy.get_distribution(obs_tensor)
+            distribution = model.policy.get_distribution(obs_tensor)
             probs = distribution.distribution.probs.detach().cpu().numpy().flatten()
 
             return {
@@ -159,23 +269,7 @@ class RLAgent:
             return {"HOLD": 0.333, "BUY": 0.333, "SELL": 0.333}
 
     def sync_with_manual_positions(self, manual_positions_list: list) -> dict:
-        """
-        When user manually trades, agent reads it and adapts.
-        
-        Parameters:
-        - manual_positions_list: List of open positions with magic != NUR_MAGIC
-        
-        Behavior:
-        If manual trades exist:
-            1. Set internal flag: self.has_manual_override = True
-            2. Read manual position direction (BUY/SELL)
-            3. Inject into state vector as: "is_manual_active" = 1
-            4. Change strategy from "SEEKING_ENTRY" to "MANUAL_TRAILING"
-            5. Start monitoring for stop-loss breach or TP hit
-            6. Block new entries until manual trade closes
-        
-        Return: {"mode": "MANUAL_TRAILING", "monitoring": True}
-        """
+        """When user manually trades, agent reads it and adapts."""
         if manual_positions_list:
             self.has_manual_override = True
             return {"mode": "MANUAL_TRAILING", "monitoring": True}

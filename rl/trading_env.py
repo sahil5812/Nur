@@ -197,6 +197,8 @@ class XAUUSDTradingEnv(gym.Env):
         csv_path: str | Path | None = None,
         episode_length: int = EPISODE_LENGTH,
         split: str = 'train',  # 'train', 'val', 'test', or 'full'
+        target_regime: str | None = None,
+        hmm_model_path: str | Path | None = None,
     ):
         super().__init__()
 
@@ -216,6 +218,7 @@ class XAUUSDTradingEnv(gym.Env):
         self._csv_path = Path(csv_path)
 
         self.episode_length = episode_length
+        self.target_regime = target_regime
 
         # Load and pre-compute
         self._df = _load_csv(self._csv_path)
@@ -238,6 +241,26 @@ class XAUUSDTradingEnv(gym.Env):
         valid_atr = self._atr[~np.isnan(self._atr)]
         self._atr_mean = float(np.mean(valid_atr))
         self._atr_std  = float(np.std(valid_atr)) + 1e-8
+
+        # Build features for HMM state pre-calculation
+        self._hmm_states = None
+        if hmm_model_path is not None:
+            hmm_path = Path(hmm_model_path)
+            if hmm_path.exists():
+                from rl.hmm_classifier import GaussianHMM
+                hmm = GaussianHMM()
+                hmm.load(hmm_path)
+                
+                log_ret = np.zeros(self._n)
+                log_ret[1:] = np.diff(np.log(np.maximum(closes, 1e-8)))
+                
+                atr_n = np.clip((self._atr - self._atr_mean) / self._atr_std, -3.0, 3.0)
+                atr_n = np.where(np.isnan(atr_n), 0.0, atr_n)
+                
+                rsi_n = np.clip((self._rsi - 50.0) / 50.0, -1.0, 1.0)
+                
+                features = np.column_stack([log_ret, atr_n, rsi_n])
+                self._hmm_states = hmm.predict(features)
 
         # Gym spaces
         self.observation_space = spaces.Box(
@@ -273,6 +296,15 @@ class XAUUSDTradingEnv(gym.Env):
 
     def step(self, action: int):
         idx = self._start_idx + self._step_idx
+        
+        # Override action to HOLD if current market state does not match the target regime
+        if self._hmm_states is not None and self.target_regime is not None:
+            current_state = self._hmm_states[idx]  # 0 for Range, 1 for Trend
+            if self.target_regime == 'trend' and current_state == 0:
+                action = ACTION_HOLD
+            elif self.target_regime == 'range' and current_state == 1:
+                action = ACTION_HOLD
+
         price = self._closes[idx]
         reward = 0.0
         info = {}

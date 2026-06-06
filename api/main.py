@@ -534,12 +534,19 @@ async def ws_live(websocket: WebSocket, token: str | None = Query(default=None))
         return
 
     await _manager.connect(websocket)
+    # Initialize cache variables
+    cached_trade_state_key = None
+    cached_equity = None
+    cached_recent_trades = None
+    cached_analytics = None
+
     try:
         while True:
             # Safely fetch this user's profile details
             profiles = []
             conn = _raw_conn()
             try:
+                # 1. Fetch user profiles (fast primary key query)
                 r = conn.execute("""
                     SELECT id, display_name, mt5_login, risk_multiplier 
                     FROM users 
@@ -553,89 +560,88 @@ async def ws_live(websocket: WebSocket, token: str | None = Query(default=None))
                         "risk_multiplier": r["risk_multiplier"],
                         "environment_mode": "PAPER" if config.PAPER_TRADING else "LIVE",
                     })
+
+                # 2. Check for trade additions/deletions to determine cache invalidation
+                trade_check = conn.execute("""
+                    SELECT MAX(id) as max_id, COUNT(id) as count 
+                    FROM trades 
+                    WHERE user_id = ?
+                """, (user_id,)).fetchone()
+                trade_state_key = (trade_check["max_id"], trade_check["count"])
+
+                # 3. If database state changes (or first run), reload analytics cache
+                if trade_state_key != cached_trade_state_key or cached_equity is None:
+                    cached_trade_state_key = trade_state_key
+
+                    # Build equity curve data
+                    eq_rows = conn.execute("""
+                        SELECT exit_time, pnl FROM trades
+                        WHERE exit_time IS NOT NULL AND user_id = ?
+                        ORDER BY exit_time ASC
+                    """, (user_id,)).fetchall()
+                    cumulative = 0.0
+                    points = []
+                    for er in eq_rows:
+                        cumulative += er["pnl"] or 0
+                        points.append({
+                            "time": er["exit_time"],
+                            "pnl": round(er["pnl"] or 0, 2),
+                            "equity": round(cumulative, 2),
+                        })
+                    cached_equity = {"points": points, "total_pnl": round(cumulative, 2)}
+
+                    # Build recent trades list
+                    t_rows = conn.execute("""
+                        SELECT * FROM trades
+                        WHERE exit_time IS NOT NULL AND user_id = ?
+                        ORDER BY exit_time DESC LIMIT 20
+                    """, (user_id,)).fetchall()
+                    cached_recent_trades = [dict(tr) for tr in t_rows]
+
+                    # Build performance analytics data
+                    summary_raw = get_summary(user_id=user_id)
+                    if not summary_raw:
+                        summary_mapped = {
+                            "total": 0,
+                            "wins": 0,
+                            "losses": 0,
+                            "win_rate": 0.0,
+                            "profit_factor": 0.0,
+                            "avg_pnl": 0.0,
+                            "best": 0.0,
+                            "worst": 0.0,
+                        }
+                        by_session = {}
+                        by_score = {}
+                        by_regime = {}
+                    else:
+                        pf = summary_raw.get("profit_factor", 0.0)
+                        if pf == float("inf"):
+                            pf = 999.0  # safe numerical fallback
+                        summary_mapped = {
+                            "total": summary_raw.get("total", 0),
+                            "wins": summary_raw.get("wins", 0),
+                            "losses": summary_raw.get("losses", 0),
+                            "win_rate": summary_raw.get("win_rate", 0.0),
+                            "profit_factor": pf,
+                            "avg_pnl": summary_raw.get("avg_pnl", 0.0),
+                            "best": summary_raw.get("best", 0.0),
+                            "worst": summary_raw.get("worst", 0.0),
+                        }
+                        by_session = get_by_session(user_id=user_id)
+                        by_score = get_by_score(user_id=user_id)
+                        by_regime = get_by_regime(user_id=user_id)
+
+                    cached_analytics = {
+                        "summary":    summary_mapped,
+                        "by_session": by_session,
+                        "by_score":   by_score,
+                        "by_regime":  by_regime,
+                    }
             except Exception:
                 pass
             finally:
                 conn.close()
-
-            # Build equity curve data
-            equity_data = {"points": [], "total_pnl": 0.0}
-            conn2 = _raw_conn()
-            try:
-                eq_rows = conn2.execute("""
-                    SELECT exit_time, pnl FROM trades
-                    WHERE exit_time IS NOT NULL AND user_id = ?
-                    ORDER BY exit_time ASC
-                """, (user_id,)).fetchall()
-                cumulative = 0.0
-                for er in eq_rows:
-                    cumulative += er["pnl"] or 0
-                    equity_data["points"].append({
-                        "time": er["exit_time"],
-                        "pnl": round(er["pnl"] or 0, 2),
-                        "equity": round(cumulative, 2),
-                    })
-                equity_data["total_pnl"] = round(cumulative, 2)
-            except Exception:
-                pass
-            finally:
-                conn2.close()
-
-            # Build recent trades list
-            recent_trades = []
-            conn3 = _raw_conn()
-            try:
-                t_rows = conn3.execute("""
-                    SELECT * FROM trades
-                    WHERE exit_time IS NOT NULL AND user_id = ?
-                    ORDER BY exit_time DESC LIMIT 20
-                """, (user_id,)).fetchall()
-                recent_trades = [dict(tr) for tr in t_rows]
-            except Exception:
-                pass
-            finally:
-                conn3.close()
-
-            # Build performance analytics data
-            summary_raw = get_summary(user_id=user_id)
-            if not summary_raw:
-                summary_mapped = {
-                    "total": 0,
-                    "wins": 0,
-                    "losses": 0,
-                    "win_rate": 0.0,
-                    "profit_factor": 0.0,
-                    "avg_pnl": 0.0,
-                    "best": 0.0,
-                    "worst": 0.0,
-                }
-                by_session = {}
-                by_score = {}
-                by_regime = {}
-            else:
-                pf = summary_raw.get("profit_factor", 0.0)
-                if pf == float("inf"):
-                    pf = 999.0  # safe numerical fallback
-                summary_mapped = {
-                    "total": summary_raw.get("total", 0),
-                    "wins": summary_raw.get("wins", 0),
-                    "losses": summary_raw.get("losses", 0),
-                    "win_rate": summary_raw.get("win_rate", 0.0),
-                    "profit_factor": pf,
-                    "avg_pnl": summary_raw.get("avg_pnl", 0.0),
-                    "best": summary_raw.get("best", 0.0),
-                    "worst": summary_raw.get("worst", 0.0),
-                }
-                by_session = get_by_session(user_id=user_id)
-                by_score = get_by_score(user_id=user_id)
-                by_regime = get_by_regime(user_id=user_id)
-
-            analytics_data = {
-                "summary":    summary_mapped,
-                "by_session": by_session,
-                "by_score":   by_score,
-                "by_regime":  by_regime,
-            }
 
             # Build live payload every second
             payload = {
@@ -644,9 +650,9 @@ async def ws_live(websocket: WebSocket, token: str | None = Query(default=None))
                 "engine":    engine_status(current_user={"id": user_id}),
                 "clients":   len(_manager._clients),
                 "profiles":  profiles,
-                "equity":    equity_data,
-                "trades":    recent_trades,
-                "analytics":  analytics_data,
+                "equity":    cached_equity,
+                "trades":    cached_recent_trades,
+                "analytics":  cached_analytics,
             }
             await websocket.send_json(payload)
             try:

@@ -13,6 +13,7 @@ Phase 2 additions over Phase 1:
 """
 
 import time
+import math
 from datetime import datetime, timezone
 
 # ─── Lazy-loaded module references (populated by _lazy_init) ──
@@ -24,6 +25,9 @@ config = None
 shared_state = None
 
 update_stats = load_stats = check_daily_lock = check_profit_lock = log_trade = None
+_raw_conn = None
+_current_atr = 2.0
+_current_ema = None
 calculate_score = None
 trading_session_open = None
 spread_ok = None
@@ -115,12 +119,22 @@ def _lazy_init():
     import shared_state as _shared_state
     shared_state = _shared_state
 
+    # Initialize Storage and Broker objects for Telegram Bot compatibility
+    from data.storage import Storage
+    from core.execution import Broker
+    storage_inst = Storage()
+    broker_inst = Broker(storage_inst)
+    shared_state.storage = storage_inst
+    shared_state.broker = broker_inst
+
     from database.stats_db import (
         update_stats as _us, load_stats as _ls,
         check_daily_lock as _cdl, check_profit_lock as _cpl, log_trade as _lt,
     )
     update_stats = _us; load_stats = _ls
     check_daily_lock = _cdl; check_profit_lock = _cpl; log_trade = _lt
+    from database.db import _raw_conn as _rc
+    globals()["_raw_conn"] = _rc
 
     from agent import calculate_score as _cs
     calculate_score = _cs
@@ -178,13 +192,6 @@ def _lazy_init():
     MAX_TRADES_PER_DAY  = config.MAX_TRADES_PER_DAY
     MIN_SCORE           = config.MIN_SCORE_TO_TRADE
 
-    # Write back to module globals so other functions see them
-    g = globals()
-    for name in ['SYMBOL', 'M1_TF', 'H1_TF', 'H4_TF', 'EMA_PERIOD', 'ATR_PERIOD',
-                 'SLEEP_TIME', 'COOLDOWN_SECONDS', 'DEVIATION', 'EMA_MIN_BUFFER',
-                 'ATR_MULTIPLIER', 'TRAIL_ATR_MULT', 'SL_ATR_MULT', 'RISK_PERCENT',
-                 'DAILY_LOSS_LIMIT', 'DAILY_PROFIT_TARGET', 'MAX_TRADES_PER_DAY', 'MIN_SCORE']:
-        g[name] = locals()[name]
 
     _initialized = True
     logger.info("Bot engine modules loaded (lazy init complete)")
@@ -277,11 +284,10 @@ def send_order(user_id: int, risk_multiplier: float, order_type: int, atr: float
 
     user_name = f"User {user_id}"
     try:
-        from database.db import _raw_conn
         with _raw_conn() as conn:
-            row = conn.execute("SELECT name FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            row = conn.execute("SELECT display_name FROM users WHERE id = ?", (user_id,)).fetchone()
             if row:
-                user_name = row["name"]
+                user_name = row["display_name"]
     except Exception:
         pass
 
@@ -358,11 +364,10 @@ def _handle_trade_closed(pnl: float, exit_price: float, reason: str = "SL/TP", u
     stats = load_stats(user_id=user_id)
     user_name = f"User {user_id}"
     try:
-        from database.db import _raw_conn
         with _raw_conn() as conn:
-            row = conn.execute("SELECT name FROM users WHERE user_id = ?", (user_id,)).fetchone()
+            row = conn.execute("SELECT display_name FROM users WHERE id = ?", (user_id,)).fetchone()
             if row:
-                user_name = row["name"]
+                user_name = row["display_name"]
     except Exception:
         pass
 
@@ -581,6 +586,10 @@ def main() -> None:
             continue
 
         if not ensure_connected():
+            try:
+                write_status(SYMBOL, "MT5_RECONNECTING", None)
+            except Exception:
+                pass
             time.sleep(60); continue
         if not shared_state.bot_running:
             time.sleep(1); continue
@@ -601,22 +610,115 @@ def main() -> None:
 
 def _tick() -> None:
     global last_candle_time, _ema_history, _atr_history, _current_regime
+    global _current_atr, _current_ema
+
+    # 1. Real-time manual override handling (runs on every tick, i.e., every 200ms)
+    active_users = []
+    try:
+        with _raw_conn() as conn:
+            # Map display_name and id columns correctly to SaaS mapping keys
+            rows = conn.execute("SELECT id AS user_id, display_name AS name, risk_multiplier FROM users WHERE is_active = 1").fetchall()
+            active_users = [dict(r) for r in rows]
+    except Exception as exc:
+        logger.error(f"Failed to query active users: {exc}", exc_info=True)
+        # Fallback to default user 1
+        active_users = [{"user_id": 1, "name": "Default Tenant", "risk_multiplier": 1.0}]
+
+    for user in active_users:
+        user_id = user["user_id"]
+        risk_multiplier = user["risk_multiplier"]
+        ustate = _get_user_state(user_id)
+
+        # ── Check for pending manual commands ──────────────────
+        pending_commands = load_pending_commands(user_id)
+        if pending_commands:
+            atr = globals().get("_current_atr", 2.0)
+            ema = globals().get("_current_ema", None)
+            for cmd in pending_commands:
+                cmd_id = cmd["id"]
+                command = cmd["command"]
+                direction = cmd.get("direction", "")
+                reason = cmd.get("reason", "")
+                
+                try:
+                    if command in ("BUY", "SELL"):
+                        order_type = mt5.ORDER_TYPE_BUY if command == "BUY" else mt5.ORDER_TYPE_SELL
+                        ok = send_order(user_id, risk_multiplier, order_type, atr, score=100, magic=999999)
+                        if ok:
+                            update_command_status(cmd_id, "EXECUTED")
+                            try:
+                                tick = mt5.symbol_info_tick(SYMBOL)
+                                price = tick.bid if tick else None
+                                write_status(SYMBOL, ustate["state"], ema if ema else price, trend=ustate["trend"], last_close=price)
+                            except Exception:
+                                pass
+                            send_telegram_alert(f"👤 {user['name']} | ✋ Manual {command} Executed\nReason: {reason}")
+                        else:
+                            update_command_status(cmd_id, "FAILED")
+                    elif command == "CLOSE_ALL":
+                        closed_count = close_all_positions(user_id)
+                        update_command_status(cmd_id, "EXECUTED")
+                        try:
+                            tick = mt5.symbol_info_tick(SYMBOL)
+                            price = tick.bid if tick else None
+                            write_status(SYMBOL, ustate["state"], ema if ema else price, trend=ustate["trend"])
+                        except Exception:
+                            pass
+                        send_telegram_alert(f"👤 {user['name']} | ✋ Manual CLOSE_ALL Executed\nClosed: {closed_count} positions")
+                except Exception as exc:
+                    logger.error(f"Failed to execute manual command {command} for user {user_id}: {exc}")
+                    update_command_status(cmd_id, "FAILED")
+
+        # ── Synchronize Agent State with Manual Override Trades ──
+        sync_agent_with_manual_trades(user_id)
 
     # ── Session filter ────────────────────────────────────────
     if not trading_session_open():
+        try:
+            write_status(SYMBOL, "SESSION_CLOSED", None)
+        except Exception:
+            pass
         time.sleep(30); return
 
     # ── News filter (Phase 2) ─────────────────────────────────
     blocked, event_name = is_news_window()
     if blocked:
         logger.info(f"📰 News blackout: {event_name} — skipping")
+        try:
+            write_status(SYMBOL, f"NEWS_BLACKOUT ({event_name})", None)
+        except Exception:
+            pass
         time.sleep(60); return
 
     # ── Spread filter ─────────────────────────────────────────
     if not config.PAPER_TRADING and not spread_ok(SYMBOL):
+        try:
+            tick = mt5.symbol_info_tick(SYMBOL)
+            price = tick.bid if tick else None
+            write_status(SYMBOL, "HIGH_SPREAD", None, last_close=price)
+        except Exception:
+            pass
         time.sleep(5); return
 
-    # ── Fetch M1 + H1 + H4 data ──────────────────────────────
+    # Fetch just the last 2 bars of M1 first (very fast) to check if a new candle closed
+    m1_latest = mt5.copy_rates_from_pos(SYMBOL, M1_TF, 0, 2)
+    if m1_latest is None or len(m1_latest) < 2:
+        time.sleep(SLEEP_TIME); return
+
+    last_closed = m1_latest[-2]
+    if last_candle_time == last_closed["time"]:
+        try:
+            tick = mt5.symbol_info_tick(SYMBOL)
+            price = tick.bid if tick else None
+            u1 = _get_user_state(1)
+            ema = globals().get("_current_ema", price)
+            write_status(SYMBOL, u1["state"], ema, trend=u1["trend"], last_close=price)
+        except Exception:
+            pass
+        time.sleep(SLEEP_TIME); return
+    last_candle_time = last_closed["time"]
+
+    # ── Fetch full M1 + H1 + H4 data only when a new candle closed ──
     m1_rates = mt5.copy_rates_from_pos(SYMBOL, M1_TF, 0, EMA_PERIOD + ATR_PERIOD + 40)
     h1_rates = mt5.copy_rates_from_pos(SYMBOL, H1_TF, 0, EMA_PERIOD + 3)
     h4_rates = mt5.copy_rates_from_pos(SYMBOL, H4_TF, 0, EMA_PERIOD + 3)
@@ -625,14 +727,12 @@ def _tick() -> None:
             h1_rates is None or len(h1_rates) < EMA_PERIOD + 3):
         time.sleep(SLEEP_TIME); return
 
-    last_closed = m1_rates[-2]
-    if last_candle_time == last_closed["time"]:
-        time.sleep(SLEEP_TIME); return
-    last_candle_time = last_closed["time"]
-
     closes = [r["close"] for r in m1_rates]
     ema    = calculate_ema(closes[-EMA_PERIOD:], EMA_PERIOD)
     price  = last_closed["close"]
+
+    # Update global variables for manual trades
+    globals()["_current_ema"] = ema
 
     # ATR
     atr_vals = [
@@ -642,6 +742,7 @@ def _tick() -> None:
         for i in range(-ATR_PERIOD, 0)
     ]
     atr = sum(atr_vals) / ATR_PERIOD
+    globals()["_current_atr"] = atr
 
     # ── H1 trend ──────────────────────────────────────────────
     h1_closes = [r["close"] for r in h1_rates]
@@ -671,18 +772,6 @@ def _tick() -> None:
     if len(_atr_history) > 50: _atr_history.pop(0)
     _current_regime = detect_regime(closes, _ema_history, atr, _atr_history)
     regime_score_threshold = get_threshold(_current_regime, MIN_SCORE)
-
-    # Pull active SaaS traders dynamically from db
-    from database.db import _raw_conn
-    active_users = []
-    try:
-        with _raw_conn() as conn:
-            rows = conn.execute("SELECT user_id, name, risk_multiplier FROM users WHERE is_active = 1").fetchall()
-            active_users = [dict(r) for r in rows]
-    except Exception as exc:
-        logger.error(f"Failed to query active users: {exc}", exc_info=True)
-        # Fallback to default user 1
-        active_users = [{"user_id": 1, "name": "Default Tenant", "risk_multiplier": 1.0}]
 
     # ── Paper position update ─────────────────────────────────
     closed_paper_positions = []
@@ -728,43 +817,6 @@ def _tick() -> None:
         user_id = user["user_id"]
         risk_multiplier = user["risk_multiplier"]
         ustate = _get_user_state(user_id)
-
-        # ── Check for pending manual commands ──────────────────
-        pending_commands = load_pending_commands(user_id)
-        if pending_commands:
-            for cmd in pending_commands:
-                cmd_id = cmd["id"]
-                command = cmd["command"]
-                direction = cmd.get("direction", "")
-                reason = cmd.get("reason", "")
-                
-                try:
-                    if command in ("BUY", "SELL"):
-                        order_type = mt5.ORDER_TYPE_BUY if command == "BUY" else mt5.ORDER_TYPE_SELL
-                        ok = send_order(user_id, risk_multiplier, order_type, atr, score=100, magic=999999)
-                        if ok:
-                            update_command_status(cmd_id, "EXECUTED")
-                            try:
-                                write_status(SYMBOL, ustate["state"], ema, trend=ustate["trend"], last_close=price if 'price' in locals() else None)
-                            except Exception:
-                                pass
-                            send_telegram_alert(f"👤 {user['name']} | ✋ Manual {command} Executed\nReason: {reason}")
-                        else:
-                            update_command_status(cmd_id, "FAILED")
-                    elif command == "CLOSE_ALL":
-                        closed_count = close_all_positions(user_id)
-                        update_command_status(cmd_id, "EXECUTED")
-                        try:
-                            write_status(SYMBOL, ustate["state"], ema, trend=ustate["trend"])
-                        except Exception:
-                            pass
-                        send_telegram_alert(f"👤 {user['name']} | ✋ Manual CLOSE_ALL Executed\nClosed: {closed_count} positions")
-                except Exception as exc:
-                    logger.error(f"Failed to execute manual command {command} for user {user_id}: {exc}")
-                    update_command_status(cmd_id, "FAILED")
-
-        # ── Synchronize Agent State with Manual Override Trades ──
-        sync_agent_with_manual_trades(user_id)
 
         # ── Check paper trade closure for this user ───────────
         if config.PAPER_TRADING and _paper:
@@ -829,6 +881,8 @@ def _tick() -> None:
                 "hour":             datetime.now(timezone.utc).hour,
                 "session":          0 if _get_session() == "ASIAN" else (1 if _get_session() == "LONDON" else 2),
                 "position":         _pos_code,
+                "log_ret":          math.log(closes[-2] / closes[-3]) if len(closes) >= 3 else 0.0,
+                "candle_time":      last_candle_time,
             }
             try:
                 rl_action = _rl_agent.predict(_rl_state)
@@ -899,6 +953,7 @@ def _tick() -> None:
     try:
         u1 = _get_user_state(1)
         write_status(SYMBOL, u1["state"], ema, trend=u1["trend"], last_close=price)
+        shared_state.engine_state = u1["state"]
     except Exception:
         pass
 

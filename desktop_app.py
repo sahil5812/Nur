@@ -332,9 +332,8 @@ def start_fastapi():
 def start_bot_engine():
     """Start Bot Engine loop in a thread."""
     try:
-        from core.engine import TradingEngine
-        engine = TradingEngine()
-        engine.run()
+        import bot_engine
+        bot_engine.main()
     except Exception as exc:
         _get_logger().error(f"Bot Engine error: {exc}")
 

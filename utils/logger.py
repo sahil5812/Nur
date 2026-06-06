@@ -33,3 +33,21 @@ def get_logger(name: str):
         log.addHandler(file_handler)
         log.addHandler(console_handler)
     return log
+
+# Trade logger configuration
+trades_formatter = logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
+trades_file_handler = logging.FileHandler("logs/trades.log", encoding="utf-8")
+trades_file_handler.setFormatter(trades_formatter)
+trades_console_handler = logging.StreamHandler()
+trades_console_handler.setFormatter(trades_formatter)
+
+def get_trade_logger():
+    """
+    Returns a configured logger instance for recording trades.
+    """
+    trade_log = logging.getLogger("NUR_Trades")
+    trade_log.setLevel(logging.INFO)
+    if not trade_log.handlers:
+        trade_log.addHandler(trades_file_handler)
+        trade_log.addHandler(trades_console_handler)
+    return trade_log

@@ -179,40 +179,61 @@ This script automatically:
 
 ---
 
-## 🤖 PPO Reinforcement Learning Pipeline
+## 🤖 3-Agent MARL Reinforcement Learning Pipeline
 
-To train and evaluate the AI agent, follow these steps:
+To train and evaluate the multi-agent reinforcement learning (MARL) framework, follow these steps:
 
 ### Step 1: Download Historical Data from MT5
-Ensure MT5 is running and logged in. Run:
+Ensure MetaTrader 5 is running and logged in. Run:
 ```bash
 python scripts/fetch_history.py
 ```
-This downloads 3 years of M1 bars, splits it, and saves them to:
+This downloads 3 years of M1 bars, splits the dataset, and saves them to:
 *   `data/train_xauusd_m1.csv` (70% training split)
 *   `data/val_xauusd_m1.csv` (15% validation split)
 *   `data/test_xauusd_m1.csv` (15% testing split)
 
-### Step 2: Train the PPO Model
-Train the agent using Stable-Baselines3:
+### Step 2: Train the MARL Framework (HMM + PPO Trend & Range)
+Train the HMM classifier followed by the specialized reinforcement learning agents:
 ```bash
-# Trains for 2,000,000 steps (default) and executes post-training validation checking
+# Fits HMM on historical data and trains specialized Trend & Range PPO agents for 2,000,000 steps each
 python -m rl.train --timesteps 2000000
 ```
-This saves the trained model to `rl/models/ppo_xauusd.zip` and logs to `rl/models/training_log.json`.
+This script automates:
+1.  **HMM Fitting**: Fits transition and emission probabilities on training data and saves the parameters to `rl/models/hmm_model.json`.
+2.  **Trend Agent Training**: Trains a PPO agent (`ppo_trend.zip`) in a custom environment filtered exclusively for HMM Trend states.
+3.  **Range Agent Training**: Trains a PPO agent (`ppo_range.zip`) in a custom environment filtered exclusively for HMM Range states.
+4.  **Fallback Agent Training**: Trains a PPO agent (`ppo_xauusd.zip`) on the full training dataset as a universal fallback agent.
 
 ### Step 3: Out-of-Sample Evaluation
-Run evaluations on the unseen test split:
+Evaluate the trained agents on the out-of-sample test split:
 ```bash
 python -m rl.evaluate
 ```
-This outputs performance indicators (Sharpe ratio, max drawdown, win rate) and saves the equity curve plot to `rl/results/equity_curve.png`.
+This executes backtests for individual agents and the combined **HMM-routed MARL Orchestrator** (`RLAgent`), calculates metrics (Sharpe ratio, drawdown, win rates), and plots the out-of-sample equity curve to `rl/results/equity_curve.png`.
 
 ---
 
 ## 🧠 Mathematical & RL Framework
-The system optimizes trade execution using Proximal Policy Optimization (PPO). The reward function is modeled as:
-$$R_t = \Delta \text{Equity}_t - (\alpha \times \text{Drawdown}_t) - (\beta \times \text{Transaction Costs})$$
+
+### 1. Market Regime Router (HMM Classifier)
+The framework partitions market regimes into hidden states using a Gaussian Hidden Markov Model:
+*   **Observations ($X_t$)**: 3D feature vector $\mathbf{x}_t = \left[ \Delta \log(\text{Close}_t), \text{ATR}_t^{\text{norm}}, \text{RSI}_t^{\text{norm}} \right]^T$.
+*   **Hidden States ($S_t$)**:
+    *   $S_t = 0$: **RANGING (Range)** — Low-volatility mean-reverting regime.
+    *   $S_t = 1$: **TRENDING (Trend)** — High-volatility directional regime.
+*   **Decoding**: The dynamic routing in `RLAgent` uses a rolling 100-candle feature window and a Viterbi decoder to determine the current state sequence:
+    $$\hat{s}_{1:T} = \arg\max_{s_{1:T}} P(s_{1:T} \mid x_{1:T})$$
+
+### 2. Specialized Execution Agents (PPO)
+*   **Observation Space ($\mathbf{o}_t$)**: Normalized 7D state vector:
+    $$\mathbf{o}_t = [ \text{RSI}^{\text{norm}}, \text{MACD\_hist}^{\text{norm}}, \text{EMA\_distance}^{\text{norm}}, \text{ATR}^{\text{norm}}, \text{hour}^{\text{norm}}, \text{session}^{\text{norm}}, \text{position}^{\text{norm}} ]$$
+*   **Action Space ($\mathbf{a}_t$)**: Discrete execution actions: $\{0: \text{HOLD}, 1: \text{BUY}, 2: \text{SELL}\}$.
+*   **Regime-Adaptive PPO Reward Functions**:
+    *   **Trend Agent**: Rewards holding positions that align with the H1 trend, penalizing premature exits and trend-chasing reversals.
+    *   **Range Agent**: Rewards quick scalps near support/resistance lines and penalizes holding trades through large drawdowns.
+    *   **General Formulation**:
+        $$R_t = \Delta \text{Equity}_t - (\alpha \times \text{Drawdown}_t) - (\beta \times \text{Transaction Costs})$$
 
 ---
 
