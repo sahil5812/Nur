@@ -307,7 +307,9 @@ def run_telegram():
     asyncio.set_event_loop(loop)
     telegram_loop = loop
 
-    app = ApplicationBuilder().token(TOKEN).build()
+    from telegram.request import HTTPXRequest
+    request_config = HTTPXRequest(connect_timeout=30.0, read_timeout=30.0)
+    app = ApplicationBuilder().token(TOKEN).request(request_config).build()
 
     # Thread-safe message sender
     async def send_msg(text):

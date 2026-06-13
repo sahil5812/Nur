@@ -105,11 +105,6 @@ class PullbackStrategy:
             f"H1={h1_trend} ({last_h1_close:.2f}/EMA={h1_ema:.2f})"
         )
 
-        # Filters
-        # 1. Avoid consolidation (price too close to M1 EMA)
-        if abs(current_m1_close - m1_ema) < (m1_atr * self.config.atr_multiplier):
-            return None, pullback_seen, f"{log_msg} | Filtered: Price in consolidation (too close to M1 EMA)"
-
         # Signal logic matching original flow with M5 structure check added
         # BULLISH SETUP
         if h1_trend == self.TREND_BULLISH and m5_trend == self.TREND_BULLISH:
@@ -120,6 +115,8 @@ class PullbackStrategy:
                 
             # 2. Trigger order on bullish breakout
             elif pullback_seen and current_m1_close > m1_ema and prev_m1_close < last_m1_close:
+                if abs(current_m1_close - m1_ema) < (m1_atr * self.config.atr_multiplier):
+                    return None, pullback_seen, f"{log_msg} | Filtered: Price in consolidation (too close to M1 EMA)"
                 return mt5.ORDER_TYPE_BUY, False, f"{log_msg} | 🟢 BUY TRIGGERED"
 
         # BEARISH SETUP
@@ -131,6 +128,8 @@ class PullbackStrategy:
                 
             # 2. Trigger order on bearish breakdown
             elif pullback_seen and current_m1_close < m1_ema and prev_m1_close > last_m1_close:
+                if abs(current_m1_close - m1_ema) < (m1_atr * self.config.atr_multiplier):
+                    return None, pullback_seen, f"{log_msg} | Filtered: Price in consolidation (too close to M1 EMA)"
                 return mt5.ORDER_TYPE_SELL, False, f"{log_msg} | 🔴 SELL TRIGGERED"
                 
         else:

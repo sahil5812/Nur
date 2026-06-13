@@ -194,6 +194,7 @@ def _create_schema(conn: sqlite3.Connection) -> None:
     _add_column_if_missing(conn, "bot_stats", "gross_loss", "REAL NOT NULL DEFAULT 0.0")
     _add_column_if_missing(conn, "bot_stats", "trading_locked", "INTEGER NOT NULL DEFAULT 0")
     _add_column_if_missing(conn, "bot_stats", "last_reset_day", "TEXT NOT NULL DEFAULT ''")
+    _add_column_if_missing(conn, "bot_stats", "loss_lock_timestamp", "TEXT")
 
     # Seed a default user for smooth backward compatibility if empty
     cur = conn.execute("SELECT COUNT(*) c FROM users")

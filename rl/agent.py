@@ -133,10 +133,10 @@ class RLAgent:
         )
         return obs
 
-    def _get_hmm_state(self, state_dict: dict[str, Any]) -> int:
-        """Decodes the current regime state (0 for RANGE, 1 for TREND) using HMM."""
+    def _get_hmm_state_with_confidence(self, state_dict: dict[str, Any]) -> tuple[int, float]:
+        """Decodes the current regime state (0 for RANGE, 1 for TREND) and returns confidence score [0.0, 1.0]."""
         if self._hmm is None:
-            return 0  # default fallback to Range (or we could default to Trend)
+            return 0, 1.0
             
         log_ret = state_dict.get("log_ret", 0.0)
         atr_n = np.clip(state_dict.get("atr_normalized", 0.0), -3.0, 3.0)
@@ -165,19 +165,38 @@ class RLAgent:
         # Sequence decoding vs point PDF fallback
         if len(self._hmm_features) >= 10:
             try:
-                states = self._hmm.predict(np.array(self._hmm_features))
-                return int(states[-1])
+                X = np.array(self._hmm_features)
+                states = self._hmm.predict(X)
+                state = int(states[-1])
+                
+                # Sequence-level posterior confidence check using Forward-Backward algorithm
+                B = self._hmm._get_emissions(X)
+                alpha, c = self._hmm._forward(B)
+                beta = self._hmm._backward(B, c)
+                gamma = alpha * beta
+                gamma = gamma / (np.sum(gamma, axis=1, keepdims=True) + 1e-12)
+                
+                confidence = float(gamma[-1, state])
+                return state, confidence
             except Exception as e:
-                logger.warning("HMM predict failed, falling back to PDF: %s", e)
+                logger.warning("HMM sequence decode failed, falling back to PDF: %s", e)
                 
         # PDF fallback
         try:
             p0 = self._hmm._pdf(feat, 0)
             p1 = self._hmm._pdf(feat, 1)
-            return 0 if p0 > p1 else 1
+            total = p0 + p1 + 1e-12
+            state = 0 if p0 > p1 else 1
+            confidence = p0 / total if state == 0 else p1 / total
+            return state, float(confidence)
         except Exception as e:
             logger.warning("HMM PDF computation failed: %s", e)
-            return 0
+            return 0, 1.0
+
+    def _get_hmm_state(self, state_dict: dict[str, Any]) -> int:
+        """Helper to get HMM state (for backward compatibility)."""
+        state, _ = self._get_hmm_state_with_confidence(state_dict)
+        return state
 
     # ------------------------------------------------------------------
     # Public API
@@ -197,16 +216,25 @@ class RLAgent:
             state_dict["is_manual_active"] = 1
             return "HOLD"
 
-        # 1. Determine active model using HMM routing
+        # 1. Determine active model using HMM routing with confidence check
         model = self._ppo_fallback
+        confidence_threshold = 0.75  # Must be at least 75% sure of regime to switch
         
         if self._hmm is not None:
             try:
-                hmm_state = self._get_hmm_state(state_dict)
-                if hmm_state == 1 and self._ppo_trend is not None:
-                    model = self._ppo_trend
-                elif hmm_state == 0 and self._ppo_range is not None:
-                    model = self._ppo_range
+                hmm_state, hmm_conf = self._get_hmm_state_with_confidence(state_dict)
+                # Expose regime routing results in state_dict for audit trail
+                state_dict["hmm_state"] = hmm_state
+                state_dict["hmm_confidence"] = hmm_conf
+                
+                if hmm_conf >= confidence_threshold:
+                    if hmm_state == 1 and self._ppo_trend is not None:
+                        model = self._ppo_trend
+                    elif hmm_state == 0 and self._ppo_range is not None:
+                        model = self._ppo_range
+                else:
+                    logger.info(f"Regime transition / low confidence ({hmm_conf:.2f} < {confidence_threshold:.2f}) — routing to universal PPO")
+                    model = self._ppo_fallback
             except Exception as e:
                 logger.warning("HMM prediction failed: %s — using fallback", e)
 
@@ -235,13 +263,18 @@ class RLAgent:
             return {"HOLD": 1.0, "BUY": 0.0, "SELL": 0.0}
 
         model = self._ppo_fallback
+        confidence_threshold = 0.75
+        
         if self._hmm is not None:
             try:
-                hmm_state = self._get_hmm_state(state_dict)
-                if hmm_state == 1 and self._ppo_trend is not None:
-                    model = self._ppo_trend
-                elif hmm_state == 0 and self._ppo_range is not None:
-                    model = self._ppo_range
+                hmm_state, hmm_conf = self._get_hmm_state_with_confidence(state_dict)
+                if hmm_conf >= confidence_threshold:
+                    if hmm_state == 1 and self._ppo_trend is not None:
+                        model = self._ppo_trend
+                    elif hmm_state == 0 and self._ppo_range is not None:
+                        model = self._ppo_range
+                else:
+                    model = self._ppo_fallback
             except Exception:
                 pass
 

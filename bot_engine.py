@@ -79,10 +79,16 @@ _rl_agent = None
 
 # ─── Constants (set after config loads) ───────────────────────
 SYMBOL = SLEEP_TIME = COOLDOWN_SECONDS = DEVIATION = None
-EMA_MIN_BUFFER = ATR_MULTIPLIER = TRAIL_ATR_MULT = SL_ATR_MULT = None
+EMA_MIN_BUFFER = ATR_MULTIPLIER = TRAIL_ATR_MULT = SL_ATR_MULT = PULLBACK_ATR_MULT = None
 RISK_PERCENT = DAILY_LOSS_LIMIT = DAILY_PROFIT_TARGET = None
 MAX_TRADES_PER_DAY = MIN_SCORE = EMA_PERIOD = ATR_PERIOD = None
 M1_TF = H1_TF = H4_TF = None
+
+# Loss protection & RSI guard
+LOSS_LOCK_EXPIRE_HOURS = 24
+RSI_OVERSOLD_BLOCK  = 25.0   # Block SELL entries when RSI is below this (market already exhausted)
+RSI_OVERBOUGHT_BLOCK = 75.0  # Block BUY entries when RSI is above this (market already exhausted)
+BREAKEVEN_ATR_MULT  = 1.0    # Move SL to entry price once profit exceeds this × ATR
 
 _initialized = False
 
@@ -103,7 +109,7 @@ def _lazy_init():
     global _paper, _rl_agent
     global SYMBOL, M1_TF, H1_TF, H4_TF, EMA_PERIOD, ATR_PERIOD
     global SLEEP_TIME, COOLDOWN_SECONDS, DEVIATION
-    global EMA_MIN_BUFFER, ATR_MULTIPLIER, TRAIL_ATR_MULT, SL_ATR_MULT
+    global EMA_MIN_BUFFER, ATR_MULTIPLIER, TRAIL_ATR_MULT, SL_ATR_MULT, PULLBACK_ATR_MULT
     global RISK_PERCENT, DAILY_LOSS_LIMIT, DAILY_PROFIT_TARGET
     global MAX_TRADES_PER_DAY, MIN_SCORE
 
@@ -182,7 +188,8 @@ def _lazy_init():
     SLEEP_TIME   = 0.2
     COOLDOWN_SECONDS    = config.COOLDOWN_SECONDS
     DEVIATION           = 20
-    EMA_MIN_BUFFER      = 0.15
+    EMA_MIN_BUFFER      = 1.0       # legacy, kept for backward compat
+    PULLBACK_ATR_MULT   = 3.0       # pullback detected when gap < atr * this
     ATR_MULTIPLIER      = 0.5
     TRAIL_ATR_MULT      = 1.2
     SL_ATR_MULT         = 1.5
@@ -215,6 +222,7 @@ def _get_user_state(user_id: int) -> dict:
             "score": 0,
             "entry_time": None,
             "ticket": None,
+            "breakeven_done": False,
         }
     return _user_states[user_id]
 
@@ -866,10 +874,26 @@ def _tick() -> None:
         if ustate["state"] == STATE_WAITING:
             if not can_trade_again(user_id):
                 continue
-            if abs(price - ema) < atr * ATR_MULTIPLIER:
-                continue
 
-            # ── Phase 4: RL agent veto/confirmation ────────────
+            # ── 1. Pullback Detection (Technical Setup Phase) ──
+            _gap = abs(price - ema)
+            _pb_buffer = atr * PULLBACK_ATR_MULT
+            if h1_trend == TREND_BULLISH and h4_trend != TREND_BEARISH:
+                if _gap < _pb_buffer:
+                    if not ustate["pullback_seen"]:
+                        ustate["pullback_seen"] = True
+                        logger.info(f"User {user['name']} pullback spotted on M1 (Bullish Setup) | gap={_gap:.2f} < buffer={_pb_buffer:.2f}")
+            elif h1_trend == TREND_BEARISH and h4_trend != TREND_BULLISH:
+                if _gap < _pb_buffer:
+                    if not ustate["pullback_seen"]:
+                        ustate["pullback_seen"] = True
+                        logger.info(f"User {user['name']} pullback spotted on M1 (Bearish Setup) | gap={_gap:.2f} < buffer={_pb_buffer:.2f}")
+            else:
+                if ustate["pullback_seen"]:
+                    logger.info(f"User {user['name']} trends misaligned, resetting pullback tracker.")
+                    ustate["pullback_seen"] = False
+
+            # ── 2. RL Inference and Veto ──
             _pos_code = 0  # flat
             if user_position:
                 _pos_code = 1 if user_position.type == mt5.ORDER_TYPE_BUY else 2
@@ -893,18 +917,31 @@ def _tick() -> None:
                 rl_conf   = {"HOLD": 0.333, "BUY": 0.333, "SELL": 0.333}
             logger.info(f"User {user_id} ({user['name']}) RL: {rl_action} | conf={rl_conf}")
 
-            # RL veto: if agent says HOLD, skip this candle entirely
+            # RL veto: if agent says HOLD, skip — UNLESS model is degenerate
+            rl_degenerate = False
             if rl_action == "HOLD":
+                hold_conf = rl_conf.get("HOLD", 0.0)
+                if hold_conf < 0.995:
+                    # Genuine HOLD signal from a functioning model — respect it
+                    continue
+                # Model is degenerate (99.5%+ HOLD on every state) — fall through to technical rules
+                rl_degenerate = True
+                logger.info(f"User {user['name']} RL degenerate (HOLD={hold_conf:.6f}) — deferring to technical rules")
+
+            # ── 3. RSI Extreme Guard (block entries into exhausted moves) ──
+            if rsi < RSI_OVERSOLD_BLOCK and h1_trend == TREND_BEARISH:
+                logger.debug(f"User {user['name']} RSI={rsi:.1f} < {RSI_OVERSOLD_BLOCK} — SELL blocked (oversold)")
+                continue
+            if rsi > RSI_OVERBOUGHT_BLOCK and h1_trend == TREND_BULLISH:
+                logger.debug(f"User {user['name']} RSI={rsi:.1f} > {RSI_OVERBOUGHT_BLOCK} — BUY blocked (overbought)")
                 continue
 
-            # BUY — RL must agree with direction
-            if h1_trend == TREND_BULLISH and rl_action == "BUY":
-                if h4_trend == TREND_BEARISH:
-                    continue
-
-                if abs(price - ema) < EMA_MIN_BUFFER:
-                    ustate["pullback_seen"] = True
-                elif ustate["pullback_seen"] and price > ema:
+            # ── 4. Trade Entry Triggers (Execution Phase) ──
+            if h1_trend == TREND_BULLISH and h4_trend != TREND_BEARISH and (rl_action == "BUY" or rl_degenerate):
+                if ustate["pullback_seen"] and price > ema:
+                    # Apply consolidation filter here to block trade entry only, not pullback detection
+                    if abs(price - ema) < atr * ATR_MULTIPLIER:
+                        continue
                     score, reasons = calculate_score(
                         True, ustate["pullback_seen"], atr, price, ema, True,
                         rsi=rsi, macd_line=macd_l, macd_signal=macd_s, direction="BUY"
@@ -915,15 +952,13 @@ def _tick() -> None:
                             ustate["state"] = STATE_IN_TRADE
                             ustate["trend"] = TREND_BULLISH
                             ustate["pullback_seen"] = False
+                            ustate["breakeven_done"] = False
 
-            # SELL — RL must agree with direction
-            elif h1_trend == TREND_BEARISH and rl_action == "SELL":
-                if h4_trend == TREND_BULLISH:
-                    continue
-
-                if abs(price - ema) < EMA_MIN_BUFFER:
-                    ustate["pullback_seen"] = True
-                elif ustate["pullback_seen"] and price < ema:
+            elif h1_trend == TREND_BEARISH and h4_trend != TREND_BULLISH and (rl_action == "SELL" or rl_degenerate):
+                if ustate["pullback_seen"] and price < ema:
+                    # Apply consolidation filter here to block trade entry only, not pullback detection
+                    if abs(price - ema) < atr * ATR_MULTIPLIER:
+                        continue
                     score, reasons = calculate_score(
                         True, ustate["pullback_seen"], atr, price, ema, True,
                         rsi=rsi, macd_line=macd_l, macd_signal=macd_s, direction="SELL"
@@ -934,6 +969,7 @@ def _tick() -> None:
                             ustate["state"] = STATE_IN_TRADE
                             ustate["trend"] = TREND_BEARISH
                             ustate["pullback_seen"] = False
+                            ustate["breakeven_done"] = False
 
         elif ustate["state"] == STATE_IN_TRADE:
             if not user_position:
@@ -943,6 +979,21 @@ def _tick() -> None:
                 ustate["ticket"] = None
             else:
                 ustate["last_known_profit"] = user_position.profit
+
+                # ── Breakeven Stop Loss: move SL to entry once profit > BREAKEVEN_ATR_MULT × ATR ──
+                if not ustate.get("breakeven_done", False):
+                    breakeven_threshold = atr * BREAKEVEN_ATR_MULT * user_position.volume * 100
+                    if user_position.profit >= breakeven_threshold:
+                        entry_price = ustate["entry_price"]
+                        if user_position.type == mt5.ORDER_TYPE_BUY and (user_position.sl == 0 or user_position.sl < entry_price):
+                            modify_sl(user_position, entry_price)
+                            ustate["breakeven_done"] = True
+                            logger.info(f"User {user['name']} ✅ Breakeven SL moved to entry {entry_price:.2f} (profit={user_position.profit:.2f})")
+                        elif user_position.type == mt5.ORDER_TYPE_SELL and (user_position.sl == 0 or user_position.sl > entry_price):
+                            modify_sl(user_position, entry_price)
+                            ustate["breakeven_done"] = True
+                            logger.info(f"User {user['name']} ✅ Breakeven SL moved to entry {entry_price:.2f} (profit={user_position.profit:.2f})")
+
                 trail_stop_loss(user_position, atr)
 
         elif ustate["state"] == STATE_COOLDOWN:

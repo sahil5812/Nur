@@ -64,6 +64,7 @@ def default_stats() -> dict[str, Any]:
         "gross_loss":      0.0,
         "trading_locked":  False,
         "last_reset_day":  str(datetime.now().date()),
+        "loss_lock_timestamp": None,
     }
 
 
@@ -84,8 +85,23 @@ def load_stats(user_id: int = 1) -> dict[str, Any]:
         stats["win_streak"]     = 0
         stats["loss_streak"]    = 0
         stats["last_reset_day"] = today
+        stats["loss_lock_timestamp"] = None
         save_stats(stats, user_id=user_id)
         logger.info(f"Daily stats reset for user {user_id} on {today}")
+
+    # ── Time-based lock expiry (LOSS_LOCK_EXPIRE_HOURS) ────────
+    if stats["trading_locked"] and stats.get("loss_lock_timestamp"):
+        try:
+            lock_time = datetime.fromisoformat(stats["loss_lock_timestamp"])
+            elapsed_hours = (datetime.now() - lock_time).total_seconds() / 3600.0
+            from bot_engine import LOSS_LOCK_EXPIRE_HOURS
+            if elapsed_hours >= LOSS_LOCK_EXPIRE_HOURS:
+                stats["trading_locked"] = False
+                stats["loss_lock_timestamp"] = None
+                save_stats(stats, user_id=user_id)
+                logger.info(f"Loss lock expired for user {user_id} after {elapsed_hours:.1f}h — trading unlocked")
+        except Exception as e:
+            logger.warning(f"Failed to check loss lock expiry: {e}")
 
     return stats
 
@@ -102,13 +118,13 @@ def save_stats(stats: dict[str, Any], user_id: int = 1) -> None:
                 total_pnl, today_pnl, best_win, worst_loss,
                 win_streak, loss_streak, max_win_streak, max_loss_streak,
                 avg_win, avg_loss, gross_win, gross_loss,
-                trading_locked, last_reset_day
+                trading_locked, last_reset_day, loss_lock_timestamp
             ) VALUES (
                 :user_id, :total_trades, :today_trades, :wins, :losses, :win_rate,
                 :total_pnl, :today_pnl, :best_win, :worst_loss,
                 :win_streak, :loss_streak, :max_win_streak, :max_loss_streak,
                 :avg_win, :avg_loss, :gross_win, :gross_loss,
-                :trading_locked, :last_reset_day
+                :trading_locked, :last_reset_day, :loss_lock_timestamp
             )
         """, {**stats, "user_id": user_id, "trading_locked": int(stats["trading_locked"])})
 
@@ -166,6 +182,7 @@ def check_daily_lock(limit: float = -50.0, user_id: int = 1) -> bool:
     if stats["today_pnl"] <= limit:
         if not stats["trading_locked"]:
             stats["trading_locked"] = True
+            stats["loss_lock_timestamp"] = datetime.now().isoformat()
             save_stats(stats, user_id=user_id)
             logger.warning(f"Daily loss lock triggered for user {user_id} — today_pnl={stats['today_pnl']:.2f}")
         return True
