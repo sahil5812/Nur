@@ -8825,3 +8825,9 @@ NameError: name 'PULLBACK_ATR_MULT' is not defined
 2026-06-24 09:33:02,664 | INFO | [P]09:33 User Default Admin | price=4060.23 ema=4071.99 | h4=BEARISH h1=BEARISH rsi=26.5 | state=IN_TRADE regime=📈 TRENDING | float=2208.06
 2026-06-24 09:33:02,669 | INFO | [P]09:33 User Abusahil | price=4060.23 ema=4071.99 | h4=BEARISH h1=BEARISH rsi=26.5 | state=IN_TRADE regime=📈 TRENDING | float=11031.84
 2026-06-24 09:33:02,674 | INFO | [P]09:33 User Demo Google User | price=4060.23 ema=4071.99 | h4=BEARISH h1=BEARISH rsi=26.5 | state=IN_TRADE regime=📈 TRENDING | float=2208.06
+2026-06-24 09:34:02,945 | INFO | [P]09:34 User Default Admin | price=4060.42 ema=4071.92 | h4=BEARISH h1=BEARISH rsi=29.3 | state=IN_TRADE regime=📈 TRENDING | float=2158.47
+2026-06-24 09:34:02,950 | INFO | [P]09:34 User Abusahil | price=4060.42 ema=4071.92 | h4=BEARISH h1=BEARISH rsi=29.3 | state=IN_TRADE regime=📈 TRENDING | float=10784.08
+2026-06-24 09:34:02,956 | INFO | [P]09:34 User Demo Google User | price=4060.42 ema=4071.92 | h4=BEARISH h1=BEARISH rsi=29.3 | state=IN_TRADE regime=📈 TRENDING | float=2158.47
+2026-06-24 09:35:02,603 | INFO | [P]09:35 User Default Admin | price=4058.96 ema=4072.26 | h4=BEARISH h1=BEARISH rsi=26.6 | state=IN_TRADE regime=📈 TRENDING | float=2539.53
+2026-06-24 09:35:02,609 | INFO | [P]09:35 User Abusahil | price=4058.96 ema=4072.26 | h4=BEARISH h1=BEARISH rsi=26.6 | state=IN_TRADE regime=📈 TRENDING | float=12687.92
+2026-06-24 09:35:02,614 | INFO | [P]09:35 User Demo Google User | price=4058.96 ema=4072.26 | h4=BEARISH h1=BEARISH rsi=26.6 | state=IN_TRADE regime=📈 TRENDING | float=2539.53

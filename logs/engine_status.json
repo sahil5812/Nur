@@ -1,8 +1,8 @@
 {
   "market": "XAUUSD",
   "state": "IN_TRADE",
-  "ema200": 4071.99,
-  "timestamp": "2026-06-24T04:03:31.644311",
+  "ema200": 4072.26,
+  "timestamp": "2026-06-24T04:05:26.166566",
   "trend": "BEARISH",
-  "last_close": 4061.03
+  "last_close": 4056.99
 }
