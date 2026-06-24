@@ -1,0 +1,30 @@
+2026-06-02 17:56:02 | INFO     | nur.trades                | [PAPER] OPEN BUY | ticket=10000 | price=4532.99 | sl=4530.13 | lot=5.24 | score=100 | magic=999999
+2026-06-02 17:56:02 | INFO     | nur.trades                | [PAPER] OPEN SELL | ticket=10001 | price=4532.82 | sl=4535.68 | lot=5.24 | score=100 | magic=999999
+2026-06-02 17:57:02 | INFO     | nur.trades                | [PAPER] CLOSE BUY | ticket=10000 | entry=4532.99 | exit=4529.61 | pnl=-1771.12 | reason=SL hit
+2026-06-02 17:57:02 | INFO     | nur.trades                | [PAPER] CLOSE SELL | ticket=10001 | entry=4532.82 | exit=4529.61 | pnl=+1682.04 | reason=CLOSE_ALL manual override
+2026-06-02 17:57:02 | INFO     | nur.trades                | [PAPER] OPEN SELL | ticket=10002 | price=4529.61 | sl=4532.73 | lot=9.61 | score=100 | magic=999999
+2026-06-02 17:57:02 | INFO     | nur.trades                | [PAPER] OPEN SELL | ticket=10003 | price=4529.61 | sl=4532.73 | lot=9.61 | score=100 | magic=999999
+2026-06-02 17:57:02 | INFO     | nur.trades                | [PAPER] OPEN BUY | ticket=10004 | price=4529.71 | sl=4526.59 | lot=9.61 | score=100 | magic=999999
+2026-06-02 18:01:02 | INFO     | nur.trades                | [PAPER] CLOSE BUY | ticket=10004 | entry=4529.71 | exit=4523.16 | pnl=-6294.55 | reason=SL hit
+2026-06-02 18:02:02 | INFO     | nur.trades                | [PAPER] CLOSE SELL | ticket=10002 | entry=4529.61 | exit=4526.23 | pnl=+3248.18 | reason=SL hit
+2026-06-02 18:02:02 | INFO     | nur.trades                | User 1 (Default Tenant) | CLOSE pnl=+3248.18 exit=4526.23 [SL hit [paper]] regime=TRENDING
+2026-06-02 18:06:02 | INFO     | nur.trades                | [PAPER] CLOSE SELL | ticket=10003 | entry=4529.61 | exit=4533.26 | pnl=-3507.65 | reason=SL hit
+2026-06-02 18:06:02 | INFO     | nur.trades                | User 1 (Default Tenant) | CLOSE pnl=-3507.65 exit=4533.26 [SL hit [paper]] regime=TRENDING
+2026-06-11 14:10:02,902 | INFO | [PAPER] OPEN SELL | ticket=10000 | price=4095.36 | sl=4098.39 | lot=4.71 | score=100 | magic=123456
+2026-06-11 14:10:02,944 | INFO | [PAPER] OPEN SELL | ticket=10001 | price=4095.36 | sl=4098.39 | lot=23.54 | score=100 | magic=123456
+2026-06-11 14:10:02,964 | INFO | [PAPER] OPEN SELL | ticket=10002 | price=4095.36 | sl=4098.39 | lot=4.71 | score=100 | magic=123456
+2026-06-11 14:33:02,681 | INFO | [PAPER] CLOSE SELL | ticket=10000 | entry=4095.36 | exit=4086.66 | pnl=+4097.70 | reason=SL hit
+2026-06-11 14:33:02,682 | INFO | [PAPER] CLOSE SELL | ticket=10001 | entry=4095.36 | exit=4086.66 | pnl=+20479.80 | reason=SL hit
+2026-06-11 14:33:02,682 | INFO | [PAPER] CLOSE SELL | ticket=10002 | entry=4095.36 | exit=4086.66 | pnl=+4097.70 | reason=SL hit
+2026-06-11 14:33:02,734 | INFO | User 1 (Default Admin) | CLOSE pnl=+4097.70 exit=4086.66 [SL hit [paper]] regime=TRENDING
+2026-06-11 14:33:02,781 | INFO | User 2 (Abusahil) | CLOSE pnl=+20479.80 exit=4086.66 [SL hit [paper]] regime=TRENDING
+2026-06-11 14:33:02,815 | INFO | User 3 (Demo Google User) | CLOSE pnl=+4097.70 exit=4086.66 [SL hit [paper]] regime=TRENDING
+2026-06-12 15:56:04,700 | INFO | [PAPER] OPEN SELL | ticket=10000 | price=4207.49 | sl=4211.51 | lot=2.36 | score=80 | magic=123456
+2026-06-12 15:56:04,732 | INFO | [PAPER] OPEN SELL | ticket=10001 | price=4207.45 | sl=4211.47 | lot=11.82 | score=80 | magic=123456
+2026-06-12 15:56:04,757 | INFO | [PAPER] OPEN SELL | ticket=10002 | price=4207.45 | sl=4211.47 | lot=2.36 | score=80 | magic=123456
+2026-06-12 16:01:04,686 | INFO | [PAPER] CLOSE SELL | ticket=10000 | entry=4207.49 | exit=4209.70 | pnl=-521.56 | reason=SL hit
+2026-06-12 16:01:04,687 | INFO | [PAPER] CLOSE SELL | ticket=10001 | entry=4207.45 | exit=4209.70 | pnl=-2659.50 | reason=SL hit
+2026-06-12 16:01:04,687 | INFO | [PAPER] CLOSE SELL | ticket=10002 | entry=4207.45 | exit=4209.70 | pnl=-531.00 | reason=SL hit
+2026-06-12 16:01:04,743 | INFO | User 1 (Default Admin) | CLOSE pnl=-521.56 exit=4209.70 [SL hit [paper]] regime=TRENDING
+2026-06-12 16:01:04,834 | INFO | User 2 (Abusahil) | CLOSE pnl=-2659.50 exit=4209.70 [SL hit [paper]] regime=TRENDING
+2026-06-12 16:01:04,895 | INFO | User 3 (Demo Google User) | CLOSE pnl=-531.00 exit=4209.70 [SL hit [paper]] regime=TRENDING
