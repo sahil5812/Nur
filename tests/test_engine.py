@@ -88,6 +88,7 @@ def test_rl_veto_path(mock_sleep, mock_engine_deps):
     engine.risk_manager.is_in_trading_session.return_value = True
     engine.risk_manager.check_daily_limits.return_value = True
     engine.risk_config.news_filter_enabled = False
+    engine.risk_config.rl_veto_enabled = True
 
     # Force a BUY signal from strategy
     engine.strategy.check_signals.return_value = (mt5.ORDER_TYPE_BUY, False, "Log Msg")

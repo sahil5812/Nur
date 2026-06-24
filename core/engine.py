@@ -422,15 +422,16 @@ class TradingEngine:
 
                         if signal is not None:
                             # RL confirmation veto
-                            state_dict = self._build_rl_state_dict(m1_rates, signal)
-                            rl_action = self.rl_agent.predict(state_dict)
-                            rl_action_map = {"BUY": mt5.ORDER_TYPE_BUY, "SELL": mt5.ORDER_TYPE_SELL, "HOLD": None}
-                            rl_order_type = rl_action_map.get(rl_action)
+                            if self.risk_config.rl_veto_enabled:
+                                state_dict = self._build_rl_state_dict(m1_rates, signal)
+                                rl_action = self.rl_agent.predict(state_dict)
+                                rl_action_map = {"BUY": mt5.ORDER_TYPE_BUY, "SELL": mt5.ORDER_TYPE_SELL, "HOLD": None}
+                                rl_order_type = rl_action_map.get(rl_action)
 
-                            if rl_order_type != signal:
-                                logger.warning(f"⚠️ RL veto: strategy={signal}, rl_action={rl_action}")
-                                time.sleep(0.2)
-                                continue
+                                if rl_order_type != signal:
+                                    logger.warning(f"⚠️ RL veto: strategy={signal}, rl_action={rl_action}")
+                                    time.sleep(0.2)
+                                    continue
 
                             # Fetch latest tick and account info
                             tick = self.data_provider.get_tick(self.strat_config.symbol, force_refresh=True)

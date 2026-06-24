@@ -29,6 +29,7 @@ class RiskConfig(BaseModel):
     # News filter settings
     news_filter_enabled: bool = Field(default=True, description="Enable/disable the hard news blackout gate")
     news_buffer_minutes: int = Field(default=30, ge=5, le=120)
+    rl_veto_enabled: bool = Field(default=False, description="Enable/disable the RL agent confirmation filter")
 
     # Panic / circuit breaker thresholds
     panic_daily_loss_limit: float = Field(default=200.0, gt=0.0)
