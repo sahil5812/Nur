@@ -2,7 +2,7 @@ import time
 import MetaTrader5 as mt5
 from datetime import datetime
 from typing import List, Optional, Any
-from core.models import Tick, StrategyConfig
+from core.models import StrategyConfig
 from data.storage import Storage
 from utils.logger import logger
 import shared_state
@@ -169,7 +169,7 @@ class Broker:
                     requested_price=price,
                     entry_price=fill_price,
                     sl=sl,
-                    tp=0.0, # TP is 0 as we trail SL
+                    tp=tp,
                     entry_time=datetime.now()
                 )
                 

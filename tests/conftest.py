@@ -1,0 +1,58 @@
+import sys
+from unittest.mock import MagicMock
+
+# Define MT5 constants
+ORDER_TYPE_BUY = 0
+ORDER_TYPE_SELL = 1
+ORDER_TYPE_BUY_LIMIT = 2
+ORDER_TYPE_SELL_LIMIT = 3
+ORDER_TYPE_BUY_STOP = 4
+ORDER_TYPE_SELL_STOP = 5
+
+TRADE_ACTION_DEAL = 1
+TRADE_ACTION_PENDING = 2
+TRADE_ACTION_SLTP = 3
+TRADE_ACTION_MODIFY = 4
+TRADE_ACTION_REMOVE = 5
+
+ORDER_TIME_GTC = 0
+ORDER_TIME_DAY = 1
+ORDER_TIME_SPECIFIED = 2
+
+ORDER_FILLING_FOK = 0
+ORDER_FILLING_IOC = 1
+ORDER_FILLING_RETURN = 2
+
+# Create a mock MetaTrader5 module
+mt5_mock = MagicMock()
+
+# Attach constants to mock
+mt5_mock.ORDER_TYPE_BUY = ORDER_TYPE_BUY
+mt5_mock.ORDER_TYPE_SELL = ORDER_TYPE_SELL
+mt5_mock.ORDER_TYPE_BUY_LIMIT = ORDER_TYPE_BUY_LIMIT
+mt5_mock.ORDER_TYPE_SELL_LIMIT = ORDER_TYPE_SELL_LIMIT
+mt5_mock.ORDER_TYPE_BUY_STOP = ORDER_TYPE_BUY_STOP
+mt5_mock.ORDER_TYPE_SELL_STOP = ORDER_TYPE_SELL_STOP
+
+mt5_mock.TRADE_ACTION_DEAL = TRADE_ACTION_DEAL
+mt5_mock.TRADE_ACTION_PENDING = TRADE_ACTION_PENDING
+mt5_mock.TRADE_ACTION_SLTP = TRADE_ACTION_SLTP
+mt5_mock.TRADE_ACTION_MODIFY = TRADE_ACTION_MODIFY
+mt5_mock.TRADE_ACTION_REMOVE = TRADE_ACTION_REMOVE
+
+mt5_mock.ORDER_TIME_GTC = ORDER_TIME_GTC
+mt5_mock.ORDER_TIME_DAY = ORDER_TIME_DAY
+mt5_mock.ORDER_TIME_SPECIFIED = ORDER_TIME_SPECIFIED
+
+mt5_mock.ORDER_FILLING_FOK = ORDER_FILLING_FOK
+mt5_mock.ORDER_FILLING_IOC = ORDER_FILLING_IOC
+mt5_mock.ORDER_FILLING_RETURN = ORDER_FILLING_RETURN
+
+# Attach basic returns
+mt5_mock.__version__ = "5.0.33"
+mt5_mock.initialize.return_value = True
+mt5_mock.shutdown.return_value = None
+mt5_mock.last_error.return_value = (1, "Success")
+
+# Set the sys.modules entry so that any imports of MetaTrader5 resolve to our mock
+sys.modules['MetaTrader5'] = mt5_mock

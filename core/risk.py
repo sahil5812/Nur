@@ -1,6 +1,5 @@
 import MetaTrader5 as mt5
-from datetime import datetime, time
-from typing import Dict, Any, Optional
+from datetime import datetime
 from core.models import RiskConfig
 from data.storage import Storage
 from utils.logger import logger

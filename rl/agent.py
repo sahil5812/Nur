@@ -102,17 +102,18 @@ class RLAgent:
     def _build_observation(state: dict[str, Any]) -> np.ndarray:
         """Convert a raw state dictionary into a normalised numpy vector.
 
-        Normalization scheme (must match ``XAUUSDTradingEnv``):
+        Normalization scheme (must match ``XAUUSDTradingEnv._get_obs``):
             * rsi           → (rsi − 50) / 50, clipped to [-1, 1]
-            * macd_hist     → tanh(macd_hist)   (pre-normalised by caller)
-            * ema_distance_pct → clipped to [-1, 1]   (pre-normalised)
-            * atr_normalized   → clipped to [-1, 1]   (pre-normalised)
+            * macd_hist     → tanh(macd_hist / max(atr, 0.01))  (ATR-scaled)
+            * ema_distance_pct → clipped to [-1, 1]
+            * atr_normalized   → clipped to [-1, 1]
             * hour          → hour / 23 × 2 − 1
             * session       → session / 3 × 2 − 1
             * position      → {0: 0.0, 1: 1.0, 2: −1.0}
         """
         rsi: float = state.get("rsi", 50.0)
         macd_hist: float = state.get("macd_hist", 0.0)
+        atr: float = state.get("atr", 1.0)
         ema_dist: float = state.get("ema_distance_pct", 0.0)
         atr_norm: float = state.get("atr_normalized", 0.0)
         hour: float = state.get("hour", 12.0)
@@ -120,7 +121,7 @@ class RLAgent:
         position: int = state.get("position", 0)
 
         rsi_norm: float = float(np.clip((rsi - 50.0) / 50.0, -1.0, 1.0))
-        macd_norm: float = float(np.tanh(macd_hist))
+        macd_norm: float = float(np.tanh(macd_hist / max(atr, 0.01)))
         ema_norm: float = float(np.clip(ema_dist, -1.0, 1.0))
         atr_n: float = float(np.clip(atr_norm, -1.0, 1.0))
         hour_norm: float = hour / 23.0 * 2.0 - 1.0

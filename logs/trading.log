@@ -8552,3 +8552,276 @@ NameError: name 'PULLBACK_ATR_MULT' is not defined
 2026-06-24 08:55:02,350 | INFO | Database ready → C:\Users\Abusahil\AppData\Roaming\Nur-Bot\database\nur_trading.db
 2026-06-24 08:55:02,625 | INFO | All background services initialized successfully
 2026-06-24 08:55:05,041 | INFO | 📝 PaperTrader initialized — PAPER TRADING MODE ACTIVE
+2026-06-24 08:55:07,018 | INFO | Database ready → C:\Users\Abusahil\AppData\Roaming\Nur-Bot\database\nur_trading.db
+2026-06-24 08:55:07,111 | INFO | 📡 Telegram bot starting polling loop...
+2026-06-24 08:55:07,959 | INFO | Daily stats reset for user 2 on 2026-06-24
+2026-06-24 08:55:20,381 | INFO | Desktop shortcut created successfully at: C:\Users\Abusahil\OneDrive\Desktop\Nur Bot.lnk
+2026-06-24 08:55:34,370 | INFO | MARL HMM model loaded from C:\Users\Abusahil\OneDrive\Desktop\Nur-main\rl\models\hmm_model.json
+2026-06-24 08:55:47,584 | INFO | MARL Trend PPO model loaded from C:\Users\Abusahil\OneDrive\Desktop\Nur-main\rl\models\ppo_trend.zip
+2026-06-24 08:55:47,746 | INFO | MARL Range PPO model loaded from C:\Users\Abusahil\OneDrive\Desktop\Nur-main\rl\models\ppo_range.zip
+2026-06-24 08:55:47,923 | INFO | MARL Fallback PPO model loaded from C:\Users\Abusahil\OneDrive\Desktop\Nur-main\rl\models\ppo_xauusd.zip
+2026-06-24 08:55:47,925 | INFO | Bot engine modules loaded (lazy init complete)
+2026-06-24 08:55:47,925 | INFO | Bot engine thread started — waiting for user authentication...
+2026-06-24 08:55:47,963 | INFO | MT5 connected successfully
+2026-06-24 08:55:47,966 | INFO | MT5 connected | PAPER mode | symbol=XAUUSD
+2026-06-24 08:55:48,302 | INFO | Daily stats reset for user 1 on 2026-06-24
+2026-06-24 08:55:48,340 | INFO | [P]08:55 User Default Admin | price=4053.11 ema=4078.06 | h4=BEARISH h1=BEARISH rsi=41.6 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:55:50,627 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.847083635515446e-07, 'SELL': 3.576283091888399e-08}
+2026-06-24 08:55:50,628 | INFO | User Default Admin RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:55:50,650 | INFO | [P]08:55 User Abusahil | price=4053.11 ema=4078.06 | h4=BEARISH h1=BEARISH rsi=41.6 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:55:50,719 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.847083635515446e-07, 'SELL': 3.576283091888399e-08}
+2026-06-24 08:55:50,727 | INFO | User Abusahil RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:55:50,758 | INFO | Daily stats reset for user 3 on 2026-06-24
+2026-06-24 08:55:50,810 | INFO | [P]08:55 User Demo Google User | price=4053.11 ema=4078.06 | h4=BEARISH h1=BEARISH rsi=41.6 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:55:50,826 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.847083635515446e-07, 'SELL': 3.576283091888399e-08}
+2026-06-24 08:55:50,827 | INFO | User Demo Google User RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:56:02,620 | INFO | [P]08:56 User Default Admin | price=4056.99 ema=4078.48 | h4=BEARISH h1=BEARISH rsi=46.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:56:02,633 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999995231628418, 'BUY': 4.033225025068532e-07, 'SELL': 6.496792082089087e-08}
+2026-06-24 08:56:02,634 | INFO | User Default Admin RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:56:02,651 | INFO | [P]08:56 User Abusahil | price=4056.99 ema=4078.48 | h4=BEARISH h1=BEARISH rsi=46.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:56:02,672 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999995231628418, 'BUY': 4.033225025068532e-07, 'SELL': 6.496792082089087e-08}
+2026-06-24 08:56:02,674 | INFO | User Abusahil RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:56:02,703 | INFO | [P]08:56 User Demo Google User | price=4056.99 ema=4078.48 | h4=BEARISH h1=BEARISH rsi=46.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:56:02,718 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999995231628418, 'BUY': 4.033225025068532e-07, 'SELL': 6.496792082089087e-08}
+2026-06-24 08:56:02,719 | INFO | User Demo Google User RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:57:02,523 | INFO | [P]08:57 User Default Admin | price=4053.36 ema=4078.17 | h4=BEARISH h1=BEARISH rsi=38.7 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:57:02,528 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.4777634166639473e-07, 'SELL': 3.1851282500383604e-08}
+2026-06-24 08:57:02,528 | INFO | User Default Admin RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:57:02,533 | INFO | [P]08:57 User Abusahil | price=4053.36 ema=4078.17 | h4=BEARISH h1=BEARISH rsi=38.7 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:57:02,536 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.4777634166639473e-07, 'SELL': 3.1851282500383604e-08}
+2026-06-24 08:57:02,537 | INFO | User Abusahil RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:57:02,540 | INFO | [P]08:57 User Demo Google User | price=4053.36 ema=4078.17 | h4=BEARISH h1=BEARISH rsi=38.7 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:57:02,543 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.4777634166639473e-07, 'SELL': 3.1851282500383604e-08}
+2026-06-24 08:57:02,543 | INFO | User Demo Google User RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:58:02,500 | INFO | [P]08:58 User Default Admin | price=4054.43 ema=4078.03 | h4=BEARISH h1=BEARISH rsi=43.3 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:58:02,505 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999996423721313, 'BUY': 3.14154959824009e-07, 'SELL': 4.2755175400088774e-08}
+2026-06-24 08:58:02,505 | INFO | User Default Admin RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:58:02,508 | INFO | [P]08:58 User Abusahil | price=4054.43 ema=4078.03 | h4=BEARISH h1=BEARISH rsi=43.3 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:58:02,512 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999996423721313, 'BUY': 3.14154959824009e-07, 'SELL': 4.2755175400088774e-08}
+2026-06-24 08:58:02,512 | INFO | User Abusahil RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:58:02,515 | INFO | [P]08:58 User Demo Google User | price=4054.43 ema=4078.03 | h4=BEARISH h1=BEARISH rsi=43.3 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:58:02,518 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999996423721313, 'BUY': 3.14154959824009e-07, 'SELL': 4.2755175400088774e-08}
+2026-06-24 08:58:02,519 | INFO | User Demo Google User RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:59:02,587 | INFO | [P]08:59 User Default Admin | price=4054.21 ema=4077.86 | h4=BEARISH h1=BEARISH rsi=40.8 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:59:02,591 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.7075759589934023e-07, 'SELL': 3.731847897370244e-08}
+2026-06-24 08:59:02,592 | INFO | User Default Admin RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:59:02,597 | INFO | [P]08:59 User Abusahil | price=4054.21 ema=4077.86 | h4=BEARISH h1=BEARISH rsi=40.8 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:59:02,602 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.7075759589934023e-07, 'SELL': 3.731847897370244e-08}
+2026-06-24 08:59:02,602 | INFO | User Abusahil RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 08:59:02,607 | INFO | [P]08:59 User Demo Google User | price=4054.21 ema=4077.86 | h4=BEARISH h1=BEARISH rsi=40.8 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 08:59:02,610 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999997615814209, 'BUY': 2.7075759589934023e-07, 'SELL': 3.731847897370244e-08}
+2026-06-24 08:59:02,610 | INFO | User Demo Google User RL degenerate (HOLD=1.000000) — deferring to technical rules
+2026-06-24 09:00:02,548 | INFO | [P]09:00 User Default Admin | price=4056.60 ema=4077.57 | h4=BEARISH h1=BEARISH rsi=55.2 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:00:02,551 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999984502792358, 'BUY': 1.2167731711087981e-06, 'SELL': 3.163855240018165e-07}
+2026-06-24 09:00:02,552 | INFO | User Default Admin RL degenerate (HOLD=0.999998) — deferring to technical rules
+2026-06-24 09:00:02,558 | INFO | [P]09:00 User Abusahil | price=4056.60 ema=4077.57 | h4=BEARISH h1=BEARISH rsi=55.2 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:00:02,561 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999984502792358, 'BUY': 1.2167731711087981e-06, 'SELL': 3.163855240018165e-07}
+2026-06-24 09:00:02,561 | INFO | User Abusahil RL degenerate (HOLD=0.999998) — deferring to technical rules
+2026-06-24 09:00:02,566 | INFO | [P]09:00 User Demo Google User | price=4056.60 ema=4077.57 | h4=BEARISH h1=BEARISH rsi=55.2 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:00:02,569 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999984502792358, 'BUY': 1.2167731711087981e-06, 'SELL': 3.163855240018165e-07}
+2026-06-24 09:00:02,569 | INFO | User Demo Google User RL degenerate (HOLD=0.999998) — deferring to technical rules
+2026-06-24 09:01:02,624 | INFO | [P]09:01 User Default Admin | price=4059.03 ema=4077.32 | h4=BEARISH h1=BEARISH rsi=67.4 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:01:02,629 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9993268251419067, 'BUY': 0.00010676663077902049, 'SELL': 0.0005664817290380597}
+2026-06-24 09:01:02,629 | INFO | User Default Admin RL degenerate (HOLD=0.999327) — deferring to technical rules
+2026-06-24 09:01:02,635 | INFO | [P]09:01 User Abusahil | price=4059.03 ema=4077.32 | h4=BEARISH h1=BEARISH rsi=67.4 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:01:02,640 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9993268251419067, 'BUY': 0.00010676663077902049, 'SELL': 0.0005664817290380597}
+2026-06-24 09:01:02,641 | INFO | User Abusahil RL degenerate (HOLD=0.999327) — deferring to technical rules
+2026-06-24 09:01:02,649 | INFO | [P]09:01 User Demo Google User | price=4059.03 ema=4077.32 | h4=BEARISH h1=BEARISH rsi=67.4 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:01:02,654 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9993268251419067, 'BUY': 0.00010676663077902049, 'SELL': 0.0005664817290380597}
+2026-06-24 09:01:02,654 | INFO | User Demo Google User RL degenerate (HOLD=0.999327) — deferring to technical rules
+2026-06-24 09:02:02,557 | INFO | [P]09:02 User Default Admin | price=4058.46 ema=4076.66 | h4=BEARISH h1=BEARISH rsi=65.2 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:02:02,560 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9998052716255188, 'BUY': 4.6650176955154166e-05, 'SELL': 0.0001481846848037094}
+2026-06-24 09:02:02,560 | INFO | User Default Admin RL degenerate (HOLD=0.999805) — deferring to technical rules
+2026-06-24 09:02:02,564 | INFO | [P]09:02 User Abusahil | price=4058.46 ema=4076.66 | h4=BEARISH h1=BEARISH rsi=65.2 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:02:02,567 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9998052716255188, 'BUY': 4.6650176955154166e-05, 'SELL': 0.0001481846848037094}
+2026-06-24 09:02:02,567 | INFO | User Abusahil RL degenerate (HOLD=0.999805) — deferring to technical rules
+2026-06-24 09:02:02,572 | INFO | [P]09:02 User Demo Google User | price=4058.46 ema=4076.66 | h4=BEARISH h1=BEARISH rsi=65.2 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:02:02,577 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9998052716255188, 'BUY': 4.6650176955154166e-05, 'SELL': 0.0001481846848037094}
+2026-06-24 09:02:02,577 | INFO | User Demo Google User RL degenerate (HOLD=0.999805) — deferring to technical rules
+2026-06-24 09:03:02,705 | INFO | [P]09:03 User Default Admin | price=4057.82 ema=4076.63 | h4=BEARISH h1=BEARISH rsi=59.9 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:03:02,710 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.999990701675415, 'BUY': 5.4896513574931305e-06, 'SELL': 3.842340902338037e-06}
+2026-06-24 09:03:02,711 | INFO | User Default Admin RL degenerate (HOLD=0.999991) — deferring to technical rules
+2026-06-24 09:03:02,719 | INFO | [P]09:03 User Abusahil | price=4057.82 ema=4076.63 | h4=BEARISH h1=BEARISH rsi=59.9 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:03:02,724 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.999990701675415, 'BUY': 5.4896513574931305e-06, 'SELL': 3.842340902338037e-06}
+2026-06-24 09:03:02,724 | INFO | User Abusahil RL degenerate (HOLD=0.999991) — deferring to technical rules
+2026-06-24 09:03:02,733 | INFO | [P]09:03 User Demo Google User | price=4057.82 ema=4076.63 | h4=BEARISH h1=BEARISH rsi=59.9 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:03:02,739 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.999990701675415, 'BUY': 5.4896513574931305e-06, 'SELL': 3.842340902338037e-06}
+2026-06-24 09:03:02,739 | INFO | User Demo Google User RL degenerate (HOLD=0.999991) — deferring to technical rules
+2026-06-24 09:04:02,674 | INFO | [P]09:04 User Default Admin | price=4056.73 ema=4076.61 | h4=BEARISH h1=BEARISH rsi=56.8 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:04:02,705 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999974966049194, 'BUY': 1.9083909137407318e-06, 'SELL': 6.160839802760165e-07}
+2026-06-24 09:04:02,706 | INFO | User Default Admin RL degenerate (HOLD=0.999997) — deferring to technical rules
+2026-06-24 09:04:02,711 | INFO | [P]09:04 User Abusahil | price=4056.73 ema=4076.61 | h4=BEARISH h1=BEARISH rsi=56.8 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:04:02,722 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999974966049194, 'BUY': 1.9083909137407318e-06, 'SELL': 6.160839802760165e-07}
+2026-06-24 09:04:02,722 | INFO | User Abusahil RL degenerate (HOLD=0.999997) — deferring to technical rules
+2026-06-24 09:04:02,728 | INFO | [P]09:04 User Demo Google User | price=4056.73 ema=4076.61 | h4=BEARISH h1=BEARISH rsi=56.8 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:04:02,735 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999974966049194, 'BUY': 1.9083909137407318e-06, 'SELL': 6.160839802760165e-07}
+2026-06-24 09:04:02,736 | INFO | User Demo Google User RL degenerate (HOLD=0.999997) — deferring to technical rules
+2026-06-24 09:05:02,563 | INFO | [P]09:05 User Default Admin | price=4060.33 ema=4076.38 | h4=BEARISH h1=BEARISH rsi=61.4 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:05:02,572 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999450445175171, 'BUY': 1.999294909182936e-05, 'SELL': 3.493592157610692e-05}
+2026-06-24 09:05:02,572 | INFO | User Default Admin RL degenerate (HOLD=0.999945) — deferring to technical rules
+2026-06-24 09:05:02,578 | INFO | [P]09:05 User Abusahil | price=4060.33 ema=4076.38 | h4=BEARISH h1=BEARISH rsi=61.4 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:05:02,587 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999450445175171, 'BUY': 1.999294909182936e-05, 'SELL': 3.493592157610692e-05}
+2026-06-24 09:05:02,587 | INFO | User Abusahil RL degenerate (HOLD=0.999945) — deferring to technical rules
+2026-06-24 09:05:02,592 | INFO | [P]09:05 User Demo Google User | price=4060.33 ema=4076.38 | h4=BEARISH h1=BEARISH rsi=61.4 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:05:02,600 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999450445175171, 'BUY': 1.999294909182936e-05, 'SELL': 3.493592157610692e-05}
+2026-06-24 09:05:02,601 | INFO | User Demo Google User RL degenerate (HOLD=0.999945) — deferring to technical rules
+2026-06-24 09:06:02,606 | INFO | [P]09:06 User Default Admin | price=4060.51 ema=4075.92 | h4=BEARISH h1=BEARISH rsi=60.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:06:02,615 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999582767486572, 'BUY': 1.6642876289552078e-05, 'SELL': 2.5063480279641226e-05}
+2026-06-24 09:06:02,615 | INFO | User Default Admin RL degenerate (HOLD=0.999958) — deferring to technical rules
+2026-06-24 09:06:02,620 | INFO | [P]09:06 User Abusahil | price=4060.51 ema=4075.92 | h4=BEARISH h1=BEARISH rsi=60.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:06:02,629 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999582767486572, 'BUY': 1.6642876289552078e-05, 'SELL': 2.5063480279641226e-05}
+2026-06-24 09:06:02,629 | INFO | User Abusahil RL degenerate (HOLD=0.999958) — deferring to technical rules
+2026-06-24 09:06:02,633 | INFO | [P]09:06 User Demo Google User | price=4060.51 ema=4075.92 | h4=BEARISH h1=BEARISH rsi=60.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:06:02,640 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999582767486572, 'BUY': 1.6642876289552078e-05, 'SELL': 2.5063480279641226e-05}
+2026-06-24 09:06:02,641 | INFO | User Demo Google User RL degenerate (HOLD=0.999958) — deferring to technical rules
+2026-06-24 09:07:02,465 | INFO | [P]09:07 User Default Admin | price=4061.65 ema=4075.80 | h4=BEARISH h1=BEARISH rsi=71.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:07:02,472 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9506815671920776, 'BUY': 0.0018727894639596343, 'SELL': 0.04744567722082138}
+2026-06-24 09:07:02,478 | INFO | [P]09:07 User Abusahil | price=4061.65 ema=4075.80 | h4=BEARISH h1=BEARISH rsi=71.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:07:02,487 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9506815671920776, 'BUY': 0.0018727894639596343, 'SELL': 0.04744567722082138}
+2026-06-24 09:07:02,493 | INFO | [P]09:07 User Demo Google User | price=4061.65 ema=4075.80 | h4=BEARISH h1=BEARISH rsi=71.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:07:02,501 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9506815671920776, 'BUY': 0.0018727894639596343, 'SELL': 0.04744567722082138}
+2026-06-24 09:08:02,509 | INFO | [P]09:08 User Default Admin | price=4060.76 ema=4075.41 | h4=BEARISH h1=BEARISH rsi=67.6 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:08:02,519 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9980944991111755, 'BUY': 0.00026867614360526204, 'SELL': 0.001636794419027865}
+2026-06-24 09:08:02,519 | INFO | User Default Admin RL degenerate (HOLD=0.998094) — deferring to technical rules
+2026-06-24 09:08:02,524 | INFO | [P]09:08 User Abusahil | price=4060.76 ema=4075.41 | h4=BEARISH h1=BEARISH rsi=67.6 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:08:02,534 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9980944991111755, 'BUY': 0.00026867614360526204, 'SELL': 0.001636794419027865}
+2026-06-24 09:08:02,534 | INFO | User Abusahil RL degenerate (HOLD=0.998094) — deferring to technical rules
+2026-06-24 09:08:02,540 | INFO | [P]09:08 User Demo Google User | price=4060.76 ema=4075.41 | h4=BEARISH h1=BEARISH rsi=67.6 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:08:02,549 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9980944991111755, 'BUY': 0.00026867614360526204, 'SELL': 0.001636794419027865}
+2026-06-24 09:08:02,549 | INFO | User Demo Google User RL degenerate (HOLD=0.998094) — deferring to technical rules
+2026-06-24 09:09:02,706 | INFO | [P]09:09 User Default Admin | price=4061.42 ema=4075.25 | h4=BEARISH h1=BEARISH rsi=62.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:09:02,717 | INFO | User 1 (Default Admin) RL: HOLD | conf={'HOLD': 0.9999091625213623, 'BUY': 3.476579877315089e-05, 'SELL': 5.602341843768954e-05}
+2026-06-24 09:09:02,718 | INFO | User Default Admin RL degenerate (HOLD=0.999909) — deferring to technical rules
+2026-06-24 09:09:02,724 | INFO | [P]09:09 User Abusahil | price=4061.42 ema=4075.25 | h4=BEARISH h1=BEARISH rsi=62.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:09:02,736 | INFO | User 2 (Abusahil) RL: HOLD | conf={'HOLD': 0.9999091625213623, 'BUY': 3.476579877315089e-05, 'SELL': 5.602341843768954e-05}
+2026-06-24 09:09:02,737 | INFO | User Abusahil RL degenerate (HOLD=0.999909) — deferring to technical rules
+2026-06-24 09:09:02,742 | INFO | [P]09:09 User Demo Google User | price=4061.42 ema=4075.25 | h4=BEARISH h1=BEARISH rsi=62.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:09:02,752 | INFO | User 3 (Demo Google User) RL: HOLD | conf={'HOLD': 0.9999091625213623, 'BUY': 3.476579877315089e-05, 'SELL': 5.602341843768954e-05}
+2026-06-24 09:09:02,753 | INFO | User Demo Google User RL degenerate (HOLD=0.999909) — deferring to technical rules
+2026-06-24 09:10:02,624 | INFO | [P]09:10 User Default Admin | price=4062.11 ema=4074.87 | h4=BEARISH h1=BEARISH rsi=78.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:10:02,634 | INFO | User 1 (Default Admin) RL: SELL | conf={'HOLD': 0.2734028398990631, 'BUY': 0.007565807085484266, 'SELL': 0.7190312743186951}
+2026-06-24 09:10:02,640 | INFO | [P]09:10 User Abusahil | price=4062.11 ema=4074.87 | h4=BEARISH h1=BEARISH rsi=78.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:10:02,649 | INFO | User 2 (Abusahil) RL: SELL | conf={'HOLD': 0.2734028398990631, 'BUY': 0.007565807085484266, 'SELL': 0.7190312743186951}
+2026-06-24 09:10:02,655 | INFO | [P]09:10 User Demo Google User | price=4062.11 ema=4074.87 | h4=BEARISH h1=BEARISH rsi=78.1 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:10:02,665 | INFO | User 3 (Demo Google User) RL: SELL | conf={'HOLD': 0.2734028398990631, 'BUY': 0.007565807085484266, 'SELL': 0.7190312743186951}
+2026-06-24 09:11:02,890 | INFO | [P]09:11 User Default Admin | price=4063.17 ema=4074.73 | h4=BEARISH h1=BEARISH rsi=77.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:11:02,898 | INFO | User 1 (Default Admin) RL: SELL | conf={'HOLD': 0.14355556666851044, 'BUY': 0.004612143151462078, 'SELL': 0.8518323302268982}
+2026-06-24 09:11:02,903 | INFO | [P]09:11 User Abusahil | price=4063.17 ema=4074.73 | h4=BEARISH h1=BEARISH rsi=77.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:11:02,910 | INFO | User 2 (Abusahil) RL: SELL | conf={'HOLD': 0.14355556666851044, 'BUY': 0.004612143151462078, 'SELL': 0.8518323302268982}
+2026-06-24 09:11:02,913 | INFO | [P]09:11 User Demo Google User | price=4063.17 ema=4074.73 | h4=BEARISH h1=BEARISH rsi=77.5 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:11:02,924 | INFO | User 3 (Demo Google User) RL: SELL | conf={'HOLD': 0.14355556666851044, 'BUY': 0.004612143151462078, 'SELL': 0.8518323302268982}
+2026-06-24 09:12:02,735 | INFO | [P]09:12 User Default Admin | price=4065.36 ema=4074.61 | h4=BEARISH h1=BEARISH rsi=80.9 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:12:02,747 | INFO | User 1 (Default Admin) RL: SELL | conf={'HOLD': 0.04175012558698654, 'BUY': 0.0063620675355196, 'SELL': 0.951887845993042}
+2026-06-24 09:12:02,752 | INFO | [P]09:12 User Abusahil | price=4065.36 ema=4074.61 | h4=BEARISH h1=BEARISH rsi=80.9 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:12:02,764 | INFO | User 2 (Abusahil) RL: SELL | conf={'HOLD': 0.04175012558698654, 'BUY': 0.0063620675355196, 'SELL': 0.951887845993042}
+2026-06-24 09:12:02,771 | INFO | [P]09:12 User Demo Google User | price=4065.36 ema=4074.61 | h4=BEARISH h1=BEARISH rsi=80.9 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:12:02,777 | INFO | User 3 (Demo Google User) RL: SELL | conf={'HOLD': 0.04175012558698654, 'BUY': 0.0063620675355196, 'SELL': 0.951887845993042}
+2026-06-24 09:13:02,524 | INFO | [P]09:13 User Default Admin | price=4068.69 ema=4073.92 | h4=BEARISH h1=BEARISH rsi=82.7 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:13:02,524 | INFO | User Default Admin pullback spotted on M1 (Bearish Setup) | gap=5.23 < buffer=7.29
+2026-06-24 09:13:02,532 | INFO | User 1 (Default Admin) RL: SELL | conf={'HOLD': 0.005468818359076977, 'BUY': 0.002833705395460129, 'SELL': 0.9916974306106567}
+2026-06-24 09:13:02,533 | INFO | User Default Admin SELL score=80/65 | ['+25 Trend aligned', '+20 Pullback confirmed', '+15 Strong ATR', '+15 Clean EMA distance', '+10 Cooldown ready', '+5 RSI=82.7 (overbought reversal)', '-10 MACD bullish — counter-trend SELL']
+2026-06-24 09:13:02,541 | INFO | 📝 [PAPER] SELL opened @ 4068.69 | SL=4072.33 | lot=2.61 | magic=123456
+2026-06-24 09:13:02,541 | INFO | 📝 [PAPER] User Default Admin | SELL | 4068.69 | SL=4072.33 | lot=2.61 | score=80 | magic=123456
+2026-06-24 09:13:02,547 | INFO | [P]09:13 User Abusahil | price=4068.69 ema=4073.92 | h4=BEARISH h1=BEARISH rsi=82.7 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:13:02,547 | INFO | User Abusahil pullback spotted on M1 (Bearish Setup) | gap=5.23 < buffer=7.29
+2026-06-24 09:13:02,556 | INFO | User 2 (Abusahil) RL: SELL | conf={'HOLD': 0.005468818359076977, 'BUY': 0.002833705395460129, 'SELL': 0.9916974306106567}
+2026-06-24 09:13:02,559 | INFO | User Abusahil SELL score=80/65 | ['+25 Trend aligned', '+20 Pullback confirmed', '+15 Strong ATR', '+15 Clean EMA distance', '+10 Cooldown ready', '+5 RSI=82.7 (overbought reversal)', '-10 MACD bullish — counter-trend SELL']
+2026-06-24 09:13:02,564 | INFO | 📝 [PAPER] SELL opened @ 4068.69 | SL=4072.33 | lot=13.04 | magic=123456
+2026-06-24 09:13:02,564 | INFO | 📝 [PAPER] User Abusahil | SELL | 4068.69 | SL=4072.33 | lot=13.04 | score=80 | magic=123456
+2026-06-24 09:13:02,570 | INFO | [P]09:13 User Demo Google User | price=4068.69 ema=4073.92 | h4=BEARISH h1=BEARISH rsi=82.7 | state=WAITING regime=📈 TRENDING | float=0.00
+2026-06-24 09:13:02,570 | INFO | User Demo Google User pullback spotted on M1 (Bearish Setup) | gap=5.23 < buffer=7.29
+2026-06-24 09:13:02,579 | INFO | User 3 (Demo Google User) RL: SELL | conf={'HOLD': 0.005468818359076977, 'BUY': 0.002833705395460129, 'SELL': 0.9916974306106567}
+2026-06-24 09:13:02,581 | INFO | User Demo Google User SELL score=80/65 | ['+25 Trend aligned', '+20 Pullback confirmed', '+15 Strong ATR', '+15 Clean EMA distance', '+10 Cooldown ready', '+5 RSI=82.7 (overbought reversal)', '-10 MACD bullish — counter-trend SELL']
+2026-06-24 09:13:02,587 | INFO | 📝 [PAPER] SELL opened @ 4068.69 | SL=4072.33 | lot=2.61 | magic=123456
+2026-06-24 09:13:02,588 | INFO | 📝 [PAPER] User Demo Google User | SELL | 4068.69 | SL=4072.33 | lot=2.61 | score=80 | magic=123456
+2026-06-24 09:14:02,827 | INFO | [P]09:14 User Default Admin | price=4067.78 ema=4073.65 | h4=BEARISH h1=BEARISH rsi=76.0 | state=IN_TRADE regime=📈 TRENDING | float=237.51
+2026-06-24 09:14:02,832 | INFO | [P]09:14 User Abusahil | price=4067.78 ema=4073.65 | h4=BEARISH h1=BEARISH rsi=76.0 | state=IN_TRADE regime=📈 TRENDING | float=1186.64
+2026-06-24 09:14:02,850 | INFO | [P]09:14 User Demo Google User | price=4067.78 ema=4073.65 | h4=BEARISH h1=BEARISH rsi=76.0 | state=IN_TRADE regime=📈 TRENDING | float=237.51
+2026-06-24 09:15:02,607 | INFO | [P]09:15 User Default Admin | price=4068.82 ema=4073.78 | h4=BEARISH h1=BEARISH rsi=79.9 | state=IN_TRADE regime=📈 TRENDING | float=-33.93
+2026-06-24 09:15:02,625 | INFO | [P]09:15 User Abusahil | price=4068.82 ema=4073.78 | h4=BEARISH h1=BEARISH rsi=79.9 | state=IN_TRADE regime=📈 TRENDING | float=-169.52
+2026-06-24 09:15:02,630 | INFO | [P]09:15 User Demo Google User | price=4068.82 ema=4073.78 | h4=BEARISH h1=BEARISH rsi=79.9 | state=IN_TRADE regime=📈 TRENDING | float=-33.93
+2026-06-24 09:16:02,865 | INFO | [P]09:16 User Default Admin | price=4068.60 ema=4073.72 | h4=BEARISH h1=BEARISH rsi=81.0 | state=IN_TRADE regime=📈 TRENDING | float=23.49
+2026-06-24 09:16:02,869 | INFO | [P]09:16 User Abusahil | price=4068.60 ema=4073.72 | h4=BEARISH h1=BEARISH rsi=81.0 | state=IN_TRADE regime=📈 TRENDING | float=117.36
+2026-06-24 09:16:02,873 | INFO | [P]09:16 User Demo Google User | price=4068.60 ema=4073.72 | h4=BEARISH h1=BEARISH rsi=81.0 | state=IN_TRADE regime=📈 TRENDING | float=23.49
+2026-06-24 09:17:02,484 | INFO | [P]09:17 User Default Admin | price=4067.56 ema=4073.90 | h4=BEARISH h1=BEARISH rsi=82.0 | state=IN_TRADE regime=📈 TRENDING | float=294.93
+2026-06-24 09:17:02,490 | INFO | [P]09:17 User Abusahil | price=4067.56 ema=4073.90 | h4=BEARISH h1=BEARISH rsi=82.0 | state=IN_TRADE regime=📈 TRENDING | float=1473.52
+2026-06-24 09:17:02,497 | INFO | [P]09:17 User Demo Google User | price=4067.56 ema=4073.90 | h4=BEARISH h1=BEARISH rsi=82.0 | state=IN_TRADE regime=📈 TRENDING | float=294.93
+2026-06-24 09:18:02,469 | INFO | [P]09:18 User Default Admin | price=4067.37 ema=4074.09 | h4=BEARISH h1=BEARISH rsi=76.0 | state=IN_TRADE regime=📈 TRENDING | float=344.52
+2026-06-24 09:18:02,476 | INFO | [P]09:18 User Abusahil | price=4067.37 ema=4074.09 | h4=BEARISH h1=BEARISH rsi=76.0 | state=IN_TRADE regime=📈 TRENDING | float=1721.28
+2026-06-24 09:18:02,483 | INFO | [P]09:18 User Demo Google User | price=4067.37 ema=4074.09 | h4=BEARISH h1=BEARISH rsi=76.0 | state=IN_TRADE regime=📈 TRENDING | float=344.52
+2026-06-24 09:19:02,561 | INFO | [P]09:19 User Default Admin | price=4066.30 ema=4073.86 | h4=BEARISH h1=BEARISH rsi=70.2 | state=IN_TRADE regime=📈 TRENDING | float=623.79
+2026-06-24 09:19:02,563 | INFO | User Default Admin ✅ Breakeven SL moved to entry 4068.69 (profit=623.79)
+2026-06-24 09:19:02,572 | INFO | [P]09:19 User Abusahil | price=4066.30 ema=4073.86 | h4=BEARISH h1=BEARISH rsi=70.2 | state=IN_TRADE regime=📈 TRENDING | float=3116.56
+2026-06-24 09:19:02,573 | INFO | User Abusahil ✅ Breakeven SL moved to entry 4068.69 (profit=3116.56)
+2026-06-24 09:19:02,579 | INFO | [P]09:19 User Demo Google User | price=4066.30 ema=4073.86 | h4=BEARISH h1=BEARISH rsi=70.2 | state=IN_TRADE regime=📈 TRENDING | float=623.79
+2026-06-24 09:19:02,581 | INFO | User Demo Google User ✅ Breakeven SL moved to entry 4068.69 (profit=623.79)
+2026-06-24 09:20:02,672 | INFO | [P]09:20 User Default Admin | price=4066.83 ema=4073.88 | h4=BEARISH h1=BEARISH rsi=68.0 | state=IN_TRADE regime=📈 TRENDING | float=485.46
+2026-06-24 09:20:02,676 | INFO | [P]09:20 User Abusahil | price=4066.83 ema=4073.88 | h4=BEARISH h1=BEARISH rsi=68.0 | state=IN_TRADE regime=📈 TRENDING | float=2425.44
+2026-06-24 09:20:02,682 | INFO | [P]09:20 User Demo Google User | price=4066.83 ema=4073.88 | h4=BEARISH h1=BEARISH rsi=68.0 | state=IN_TRADE regime=📈 TRENDING | float=485.46
+2026-06-24 09:21:02,781 | INFO | [P]09:21 User Default Admin | price=4065.38 ema=4073.67 | h4=BEARISH h1=BEARISH rsi=66.1 | state=IN_TRADE regime=📈 TRENDING | float=863.91
+2026-06-24 09:21:02,788 | INFO | [P]09:21 User Abusahil | price=4065.38 ema=4073.67 | h4=BEARISH h1=BEARISH rsi=66.1 | state=IN_TRADE regime=📈 TRENDING | float=4316.24
+2026-06-24 09:21:02,794 | INFO | [P]09:21 User Demo Google User | price=4065.38 ema=4073.67 | h4=BEARISH h1=BEARISH rsi=66.1 | state=IN_TRADE regime=📈 TRENDING | float=863.91
+2026-06-24 09:22:02,641 | INFO | [P]09:22 User Default Admin | price=4065.12 ema=4073.37 | h4=BEARISH h1=BEARISH rsi=63.9 | state=IN_TRADE regime=📈 TRENDING | float=931.77
+2026-06-24 09:22:02,647 | INFO | [P]09:22 User Abusahil | price=4065.12 ema=4073.37 | h4=BEARISH h1=BEARISH rsi=63.9 | state=IN_TRADE regime=📈 TRENDING | float=4655.28
+2026-06-24 09:22:02,653 | INFO | [P]09:22 User Demo Google User | price=4065.12 ema=4073.37 | h4=BEARISH h1=BEARISH rsi=63.9 | state=IN_TRADE regime=📈 TRENDING | float=931.77
+2026-06-24 09:23:02,568 | INFO | [P]09:23 User Default Admin | price=4066.36 ema=4073.32 | h4=BEARISH h1=BEARISH rsi=64.6 | state=IN_TRADE regime=📈 TRENDING | float=608.13
+2026-06-24 09:23:02,574 | INFO | [P]09:23 User Abusahil | price=4066.36 ema=4073.32 | h4=BEARISH h1=BEARISH rsi=64.6 | state=IN_TRADE regime=📈 TRENDING | float=3038.32
+2026-06-24 09:23:02,579 | INFO | [P]09:23 User Demo Google User | price=4066.36 ema=4073.32 | h4=BEARISH h1=BEARISH rsi=64.6 | state=IN_TRADE regime=📈 TRENDING | float=608.13
+2026-06-24 09:24:02,669 | INFO | [P]09:24 User Default Admin | price=4063.51 ema=4073.25 | h4=BEARISH h1=BEARISH rsi=51.3 | state=IN_TRADE regime=📈 TRENDING | float=1351.98
+2026-06-24 09:24:02,673 | INFO | [P]09:24 User Abusahil | price=4063.51 ema=4073.25 | h4=BEARISH h1=BEARISH rsi=51.3 | state=IN_TRADE regime=📈 TRENDING | float=6754.72
+2026-06-24 09:24:02,677 | INFO | [P]09:24 User Demo Google User | price=4063.51 ema=4073.25 | h4=BEARISH h1=BEARISH rsi=51.3 | state=IN_TRADE regime=📈 TRENDING | float=1351.98
+2026-06-24 09:25:02,549 | INFO | [P]09:25 User Default Admin | price=4063.52 ema=4073.15 | h4=BEARISH h1=BEARISH rsi=43.5 | state=IN_TRADE regime=📈 TRENDING | float=1349.37
+2026-06-24 09:25:02,555 | INFO | [P]09:25 User Abusahil | price=4063.52 ema=4073.15 | h4=BEARISH h1=BEARISH rsi=43.5 | state=IN_TRADE regime=📈 TRENDING | float=6741.68
+2026-06-24 09:25:02,562 | INFO | [P]09:25 User Demo Google User | price=4063.52 ema=4073.15 | h4=BEARISH h1=BEARISH rsi=43.5 | state=IN_TRADE regime=📈 TRENDING | float=1349.37
+2026-06-24 09:26:02,597 | INFO | [P]09:26 User Default Admin | price=4062.60 ema=4072.82 | h4=BEARISH h1=BEARISH rsi=24.6 | state=IN_TRADE regime=📈 TRENDING | float=1589.49
+2026-06-24 09:26:02,604 | INFO | [P]09:26 User Abusahil | price=4062.60 ema=4072.82 | h4=BEARISH h1=BEARISH rsi=24.6 | state=IN_TRADE regime=📈 TRENDING | float=7941.36
+2026-06-24 09:26:02,612 | INFO | [P]09:26 User Demo Google User | price=4062.60 ema=4072.82 | h4=BEARISH h1=BEARISH rsi=24.6 | state=IN_TRADE regime=📈 TRENDING | float=1589.49
+2026-06-24 09:27:02,546 | INFO | [P]09:27 User Default Admin | price=4063.19 ema=4072.75 | h4=BEARISH h1=BEARISH rsi=29.7 | state=IN_TRADE regime=📈 TRENDING | float=1435.50
+2026-06-24 09:27:02,552 | INFO | [P]09:27 User Abusahil | price=4063.19 ema=4072.75 | h4=BEARISH h1=BEARISH rsi=29.7 | state=IN_TRADE regime=📈 TRENDING | float=7172.00
+2026-06-24 09:27:02,557 | INFO | [P]09:27 User Demo Google User | price=4063.19 ema=4072.75 | h4=BEARISH h1=BEARISH rsi=29.7 | state=IN_TRADE regime=📈 TRENDING | float=1435.50
+2026-06-24 09:28:02,540 | INFO | [P]09:28 User Default Admin | price=4062.42 ema=4072.76 | h4=BEARISH h1=BEARISH rsi=21.3 | state=IN_TRADE regime=📈 TRENDING | float=1636.47
+2026-06-24 09:28:02,545 | INFO | [P]09:28 User Abusahil | price=4062.42 ema=4072.76 | h4=BEARISH h1=BEARISH rsi=21.3 | state=IN_TRADE regime=📈 TRENDING | float=8176.08
+2026-06-24 09:28:02,554 | INFO | [P]09:28 User Demo Google User | price=4062.42 ema=4072.76 | h4=BEARISH h1=BEARISH rsi=21.3 | state=IN_TRADE regime=📈 TRENDING | float=1636.47
+2026-06-24 09:29:02,613 | INFO | [P]09:29 User Default Admin | price=4062.39 ema=4072.58 | h4=BEARISH h1=BEARISH rsi=22.1 | state=IN_TRADE regime=📈 TRENDING | float=1644.30
+2026-06-24 09:29:02,620 | INFO | [P]09:29 User Abusahil | price=4062.39 ema=4072.58 | h4=BEARISH h1=BEARISH rsi=22.1 | state=IN_TRADE regime=📈 TRENDING | float=8215.20
+2026-06-24 09:29:02,627 | INFO | [P]09:29 User Demo Google User | price=4062.39 ema=4072.58 | h4=BEARISH h1=BEARISH rsi=22.1 | state=IN_TRADE regime=📈 TRENDING | float=1644.30
+2026-06-24 09:29:58,331 | ERROR | 🚨 RiskGuardian trip: Margin check failed (MT5 account_info returned None)
+2026-06-24 09:29:58,334 | ERROR | 🚨 RiskGuardian trip: Daily max loss exceeded (today_profit=-300.00, limit=-100.00)
+2026-06-24 09:30:02,704 | INFO | [P]09:30 User Default Admin | price=4062.80 ema=4072.25 | h4=BEARISH h1=BEARISH rsi=28.5 | state=IN_TRADE regime=📈 TRENDING | float=1537.29
+2026-06-24 09:30:02,709 | INFO | [P]09:30 User Abusahil | price=4062.80 ema=4072.25 | h4=BEARISH h1=BEARISH rsi=28.5 | state=IN_TRADE regime=📈 TRENDING | float=7680.56
+2026-06-24 09:30:02,715 | INFO | [P]09:30 User Demo Google User | price=4062.80 ema=4072.25 | h4=BEARISH h1=BEARISH rsi=28.5 | state=IN_TRADE regime=📈 TRENDING | float=1537.29
+2026-06-24 09:30:58,274 | ERROR | 🚨 RiskGuardian trip: Margin level below threshold (free_margin=1.00, required_threshold=1.50)
+2026-06-24 09:30:58,277 | ERROR | 🚨 RiskGuardian trip: Daily max loss exceeded (today_profit=-300.00, limit=-100.00)
+2026-06-24 09:30:58,291 | WARNING | ⚠️ Trading blocked: Panic Mode or Hard Stop is active.
+2026-06-24 09:30:58,292 | WARNING | ⚠️ Trading blocked: Panic Mode or Hard Stop is active.
+2026-06-24 09:30:58,292 | WARNING | ⚠️ Trading blocked: Soft Stop is active (no new entries).
+2026-06-24 09:30:58,295 | ERROR | ❌ Max Daily Loss Limit Hit: Today's PnL is -600.00$ (Limit: -500.0$)
+2026-06-24 09:30:58,297 | ERROR | ❌ Max Drawdown Limit Hit: Max drawdown is 1200.00$ (Limit: 1000.0$)
+2026-06-24 09:30:58,300 | WARNING | ⚠️ Max Daily Trade Limit Hit: 6 trades taken today (Limit: 5)
+2026-06-24 09:30:58,305 | ERROR | ❌ Insufficient Margin: Free: 500.00$, Required: 500.00$ (+10% buffer)
+2026-06-24 09:30:58,305 | ERROR | ❌ Margin check failed (retcode=10014): <MagicMock name='mt5.order_check().comment' id='2848669486784'>
+2026-06-24 09:30:58,310 | INFO | 📈 Pullback spotted on M1 (Bullish Setup)
+2026-06-24 09:30:58,545 | INFO | 🔄 Trends misaligned, resetting pullback tracker.
+2026-06-24 09:31:02,693 | INFO | [P]09:31 User Default Admin | price=4063.50 ema=4072.28 | h4=BEARISH h1=BEARISH rsi=31.8 | state=IN_TRADE regime=📈 TRENDING | float=1354.59
+2026-06-24 09:31:02,696 | INFO | [P]09:31 User Abusahil | price=4063.50 ema=4072.28 | h4=BEARISH h1=BEARISH rsi=31.8 | state=IN_TRADE regime=📈 TRENDING | float=6767.76
+2026-06-24 09:31:02,701 | INFO | [P]09:31 User Demo Google User | price=4063.50 ema=4072.28 | h4=BEARISH h1=BEARISH rsi=31.8 | state=IN_TRADE regime=📈 TRENDING | float=1354.59
+2026-06-24 09:31:39,813 | INFO | 📈 Pullback spotted on M1 (Bullish Setup)
+2026-06-24 09:32:02,914 | INFO | [P]09:32 User Default Admin | price=4059.88 ema=4072.23 | h4=BEARISH h1=BEARISH rsi=26.7 | state=IN_TRADE regime=📈 TRENDING | float=2299.41
+2026-06-24 09:32:02,921 | INFO | [P]09:32 User Abusahil | price=4059.88 ema=4072.23 | h4=BEARISH h1=BEARISH rsi=26.7 | state=IN_TRADE regime=📈 TRENDING | float=11488.24
+2026-06-24 09:32:02,928 | INFO | [P]09:32 User Demo Google User | price=4059.88 ema=4072.23 | h4=BEARISH h1=BEARISH rsi=26.7 | state=IN_TRADE regime=📈 TRENDING | float=2299.41
+2026-06-24 09:32:03,650 | ERROR | 🚨 RiskGuardian trip: Margin level below threshold (free_margin=1.00, required_threshold=1.50)
+2026-06-24 09:32:03,656 | ERROR | 🚨 RiskGuardian trip: Daily max loss exceeded (today_profit=-300.00, limit=-100.00)
+2026-06-24 09:32:03,665 | WARNING | ⚠️ Trading blocked: Panic Mode or Hard Stop is active.
+2026-06-24 09:32:03,665 | WARNING | ⚠️ Trading blocked: Panic Mode or Hard Stop is active.
+2026-06-24 09:32:03,665 | WARNING | ⚠️ Trading blocked: Soft Stop is active (no new entries).
+2026-06-24 09:32:03,667 | ERROR | ❌ Max Daily Loss Limit Hit: Today's PnL is -600.00$ (Limit: -500.0$)
+2026-06-24 09:32:03,670 | ERROR | ❌ Max Drawdown Limit Hit: Max drawdown is 1200.00$ (Limit: 1000.0$)
+2026-06-24 09:32:03,673 | WARNING | ⚠️ Max Daily Trade Limit Hit: 6 trades taken today (Limit: 5)
+2026-06-24 09:32:03,676 | ERROR | ❌ Insufficient Margin: Free: 500.00$, Required: 500.00$ (+10% buffer)
+2026-06-24 09:32:03,676 | ERROR | ❌ Margin check failed (retcode=10014): <MagicMock name='mt5.order_check().comment' id='2151690839984'>
+2026-06-24 09:32:03,678 | INFO | 📈 Pullback spotted on M1 (Bullish Setup)
+2026-06-24 09:32:03,680 | INFO | 📉 Pullback spotted on M1 (Bearish Setup)
+2026-06-24 09:32:03,681 | INFO | 🔄 Trends misaligned, resetting pullback tracker.
+2026-06-24 09:33:02,664 | INFO | [P]09:33 User Default Admin | price=4060.23 ema=4071.99 | h4=BEARISH h1=BEARISH rsi=26.5 | state=IN_TRADE regime=📈 TRENDING | float=2208.06
+2026-06-24 09:33:02,669 | INFO | [P]09:33 User Abusahil | price=4060.23 ema=4071.99 | h4=BEARISH h1=BEARISH rsi=26.5 | state=IN_TRADE regime=📈 TRENDING | float=11031.84
+2026-06-24 09:33:02,674 | INFO | [P]09:33 User Demo Google User | price=4060.23 ema=4071.99 | h4=BEARISH h1=BEARISH rsi=26.5 | state=IN_TRADE regime=📈 TRENDING | float=2208.06

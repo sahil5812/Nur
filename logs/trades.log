@@ -28,3 +28,6 @@
 2026-06-12 16:01:04,743 | INFO | User 1 (Default Admin) | CLOSE pnl=-521.56 exit=4209.70 [SL hit [paper]] regime=TRENDING
 2026-06-12 16:01:04,834 | INFO | User 2 (Abusahil) | CLOSE pnl=-2659.50 exit=4209.70 [SL hit [paper]] regime=TRENDING
 2026-06-12 16:01:04,895 | INFO | User 3 (Demo Google User) | CLOSE pnl=-531.00 exit=4209.70 [SL hit [paper]] regime=TRENDING
+2026-06-24 09:13:02,539 | INFO | [PAPER] OPEN SELL | ticket=10000 | price=4068.69 | sl=4072.33 | lot=2.61 | score=80 | magic=123456
+2026-06-24 09:13:02,563 | INFO | [PAPER] OPEN SELL | ticket=10001 | price=4068.69 | sl=4072.33 | lot=13.04 | score=80 | magic=123456
+2026-06-24 09:13:02,587 | INFO | [PAPER] OPEN SELL | ticket=10002 | price=4068.69 | sl=4072.33 | lot=2.61 | score=80 | magic=123456

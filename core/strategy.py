@@ -1,8 +1,7 @@
 import MetaTrader5 as mt5
 from typing import List, Tuple, Optional
-from core.models import Bar, Tick, StrategyConfig
+from core.models import Bar, StrategyConfig
 from utils.logger import logger
-from utils.helpers import safe_divide
 
 class PullbackStrategy:
     TREND_NONE = "NONE"

@@ -280,7 +280,7 @@ graph TD
 ### 5. Common Parameters & General Reward Formulation
 *   **Observation Vector Normalization**:
     *   $\text{RSI}^{\text{norm}} = \text{clip}((\text{RSI} - 50) / 50, -1.0, 1.0)$
-    *   $\text{MACD\_hist}^{\text{norm}} = \tanh(\text{MACD\_hist})$
+    *   $\text{MACD\_hist}^{\text{norm}} = \tanh(\text{MACD\_hist} / \text{ATR})$
     *   $\text{EMA\_distance}^{\text{norm}} = \text{clip}((\text{Price} - \text{EMA}) / \text{EMA} \times 100, -1.0, 1.0)$
     *   $\text{ATR}^{\text{norm}} = \text{clip}((\text{ATR} - 1.5) / 1.0, -1.0, 1.0)$
     *   $\text{Hour}^{\text{norm}} = (\text{Hour} / 23 \times 2) - 1.0$

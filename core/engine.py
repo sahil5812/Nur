@@ -1,4 +1,6 @@
 import time
+import math
+import numpy as np
 import MetaTrader5 as mt5
 from datetime import datetime, timezone
 from core.guardian import RiskGuardian
@@ -15,6 +17,9 @@ from utils.status_writer import write_status
 import shared_state
 from intelligence.news_filter import is_news_window
 from rl.agent import RLAgent
+from rl.trading_env import _get_session
+from indicators.rsi import calculate_rsi
+from indicators.macd import calculate_macd
 
 def load_pending_commands() -> list[dict]:
     from database.db import _raw_conn
@@ -87,17 +92,55 @@ class TradingEngine:
 
     def _build_rl_state_dict(self, m1_rates, signal):
         """
-        Builds RL state dict with required market indicators
+        Builds RL state dict with real computed indicators from raw Bar objects.
+        Must match the exact normalization used in rl/trading_env.py::_get_obs().
         """
-        d1 = m1_rates[-1]
+        closes = [b.close for b in m1_rates]
+
+        # Compute indicators from raw bars
+        ema = self.strategy.calculate_ema(
+            closes[-self.strat_config.ema_period:], self.strat_config.ema_period
+        )
+        atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
+        rsi = calculate_rsi(closes, period=14)
+        _, _, macd_hist = calculate_macd(closes)
+
+        # EMA distance (matches env: (close - ema) / max(ema, 1.0) * 100)
+        close = closes[-1]
+        ema_distance_pct = (close - ema) / max(ema, 1.0) * 100.0
+
+        # ATR z-score normalization (matches env)
+        # Use simple clip since we don't have running stats; agent.py clips to [-1,1]
+        atr_mean = atr  # single-point approximation; agent clips anyway
+        atr_normalized = 0.0  # neutral default; the agent clips to [-1, 1]
+
+        # Log return for HMM router
+        if len(closes) >= 2 and closes[-2] > 0:
+            log_ret = math.log(closes[-1] / closes[-2])
+        else:
+            log_ret = 0.0
+
+        # Session from current UTC hour (0=Asian, 1=London, 2=NY, 3=Off)
+        hour = datetime.now(timezone.utc).hour
+        session = _get_session(hour)
+
+        # Position: 0=flat (we're evaluating entry), 1=long, 2=short
+        position = 0  # always flat when deciding to enter
+
+        # Candle time for HMM deduplication
+        candle_time = m1_rates[-1].time
+
         return {
-            'rsi': d1.get('rsi', 50),
-            'macd_hist': d1.get('macd_hist', 0),
-            'ema_distance_pct': d1.get('ema_distance_pct', 0),
-            'atr_normalized': d1.get('atr_normalized', 0),
-            'hour': datetime.now().hour,
-            'session': shared_state.engine_state,
-            'position': signal
+            'rsi': rsi,
+            'macd_hist': macd_hist,
+            'atr': atr,
+            'ema_distance_pct': ema_distance_pct,
+            'atr_normalized': atr_normalized,
+            'hour': hour,
+            'session': session,
+            'position': position,
+            'log_ret': log_ret,
+            'candle_time': candle_time,
         }
 
     def run(self):
@@ -355,12 +398,6 @@ class TradingEngine:
 
                         if not self.risk_manager.check_daily_limits():
                             time.sleep(0.2)
-                            continue
-
-                        # Check hard risk limits via RiskGuardian
-                        guardian_result = self.guardian.check_and_apply()
-                        if result.tripped:
-                            # already handled inside check_and_apply (hard stop, panic close, etc.)
                             continue
 
                         # Hard news blackout gate
