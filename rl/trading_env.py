@@ -180,6 +180,12 @@ def _get_session(hour: int) -> int:
     return 3       # Off
 
 
+# ─── New Cost Parameters ─────────────────────────────────────────
+# Typical XAUUSD costs (in price points)
+DEFAULT_SPREAD_POINTS = 2.0      # ~2 points spread (0.2 pips for XAUUSD)
+DEFAULT_COMMISSION_PER_LOT = 0.5 # $0.5 per lot per side (round-trip = 1.0)
+
+
 class XAUUSDTradingEnv(gym.Env):
     """
     Gymnasium RL environment that replays XAUUSD M1 candles.
@@ -188,6 +194,10 @@ class XAUUSDTradingEnv(gym.Env):
     All features normalized to approximately [-1, 1].
 
     Action Discrete(3): 0=HOLD, 1=BUY, 2=SELL
+
+    Reward (matching README formula):
+      R = ΔEquity − α·Drawdown − β·TxCosts
+      where α = 0.5 (drawdown penalty), β = 1.0 (transaction cost weight)
     """
 
     metadata = {"render_modes": []}
@@ -199,6 +209,10 @@ class XAUUSDTradingEnv(gym.Env):
         split: str = 'train',  # 'train', 'val', 'test', or 'full'
         target_regime: str | None = None,
         hmm_model_path: str | Path | None = None,
+        # Cost parameters
+        spread_points: float = DEFAULT_SPREAD_POINTS,
+        commission_per_lot: float = DEFAULT_COMMISSION_PER_LOT,
+        drawdown_penalty_alpha: float = 0.5,
     ):
         super().__init__()
 
@@ -268,12 +282,22 @@ class XAUUSDTradingEnv(gym.Env):
         )
         self.action_space = spaces.Discrete(3)
 
+        # Cost parameters
+        self._spread_points = spread_points
+        self._commission_per_lot = commission_per_lot
+        self._drawdown_alpha = drawdown_penalty_alpha
+
         # Episode state
         self._start_idx = WARMUP
         self._step_idx  = 0
         self._position  = POS_FLAT
         self._entry_price = 0.0
         self._total_reward = 0.0
+        # Equity tracking for drawdown penalty
+        self._equity = 0.0
+        self._peak_equity = 0.0
+        # Default lot size (can be overridden via config)
+        self._lot_size = 1.0
 
     # ─── Gym API ──────────────────────────────────────────────
 
@@ -291,12 +315,14 @@ class XAUUSDTradingEnv(gym.Env):
         self._position = POS_FLAT
         self._entry_price = 0.0
         self._total_reward = 0.0
+        self._equity = 0.0
+        self._peak_equity = 0.0
 
         return self._get_obs(), {}
 
     def step(self, action: int):
         idx = self._start_idx + self._step_idx
-        
+
         # Override action to HOLD if current market state does not match the target regime
         if self._hmm_states is not None and self.target_regime is not None:
             current_state = self._hmm_states[idx]  # 0 for Range, 1 for Trend
@@ -314,11 +340,18 @@ class XAUUSDTradingEnv(gym.Env):
             if self._position == POS_FLAT:
                 self._position = POS_LONG
                 self._entry_price = price
+                cost = self._transaction_cost()
+                reward -= cost
+                self._equity -= cost
+                info["entry_cost"] = cost
             elif self._position == POS_SHORT:
                 # Close short, realise PnL
                 pnl = self._entry_price - price
-                reward += pnl
+                cost = self._transaction_cost()
+                reward += pnl - cost
+                self._equity += pnl
                 info["trade_pnl"] = pnl
+                info["entry_cost"] = cost
                 self._position = POS_FLAT
                 self._entry_price = 0.0
             else:
@@ -329,11 +362,18 @@ class XAUUSDTradingEnv(gym.Env):
             if self._position == POS_FLAT:
                 self._position = POS_SHORT
                 self._entry_price = price
+                cost = self._transaction_cost()
+                reward -= cost
+                self._equity -= cost
+                info["entry_cost"] = cost
             elif self._position == POS_LONG:
                 # Close long, realise PnL
                 pnl = price - self._entry_price
-                reward += pnl
+                cost = self._transaction_cost()
+                reward += pnl - cost
+                self._equity += pnl
                 info["trade_pnl"] = pnl
+                info["entry_cost"] = cost
                 self._position = POS_FLAT
                 self._entry_price = 0.0
             else:
@@ -343,6 +383,14 @@ class XAUUSDTradingEnv(gym.Env):
         else:  # HOLD
             if self._position != POS_FLAT:
                 reward -= 0.1  # holding penalty
+
+        # Floating drawdown penalty: α·Drawdown
+        self._peak_equity = max(self._peak_equity, self._equity)
+        drawdown = max(0.0, self._peak_equity - self._equity)
+        reward -= self._drawdown_alpha * drawdown
+        info["drawdown"] = drawdown
+        info["equity"] = self._equity
+        info["peak_equity"] = self._peak_equity
 
         self._total_reward += reward
         self._step_idx += 1
@@ -356,12 +404,19 @@ class XAUUSDTradingEnv(gym.Env):
                 pnl = price - self._entry_price
             else:
                 pnl = self._entry_price - price
-            reward += pnl
+            cost = self._transaction_cost()
+            reward += pnl - cost
+            self._equity += pnl
             info["forced_close_pnl"] = pnl
+            info["entry_cost"] = cost
             self._position = POS_FLAT
 
         obs = self._get_obs()
         return obs, reward, terminated, truncated, info
+
+    def _transaction_cost(self) -> float:
+        """Spread + commission cost per trade side."""
+        return self._spread_points + (self._commission_per_lot * self._lot_size)
 
     # ─── Internal ─────────────────────────────────────────────
 

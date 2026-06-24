@@ -139,7 +139,7 @@ pip install -r requirements.txt
 Create a `.env` file in the root folder with the following variables:
 ```ini
 # MetaTrader 5 Configurations
-MT5_LOGIN=5051162188
+MT5_LOGIN=00000000
 MT5_PASSWORD=your_password
 MT5_SERVER=MetaQuotes-Demo
 
@@ -179,7 +179,7 @@ This script automatically:
 
 ---
 
-## 🤖 3-Agent MARL Reinforcement Learning Pipeline
+## 🤖 4-Agent MARL Reinforcement Learning Pipeline
 
 To train and evaluate the multi-agent reinforcement learning (MARL) framework, follow these steps:
 

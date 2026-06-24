@@ -28,6 +28,16 @@ class RiskConfig(BaseModel):
     ny_end: str = Field(default="21:00")
     timezone_offset: str = Field(default="+00:00")
 
+    # News filter settings
+    news_filter_enabled: bool = Field(default=True, description="Enable/disable the hard news blackout gate")
+    news_buffer_minutes: int = Field(default=30, ge=5, le=120)
+
+    # Panic / circuit breaker thresholds
+    panic_daily_loss_limit: float = Field(default=200.0, gt=0.0)
+    panic_drawdown_limit: float = Field(default=100.0, gt=0.0)
+    panic_margin_multiplier: float = Field(default=1.5, gt=1.0)
+    panic_spread_threshold: float = Field(default=0.02, gt=0.0)
+
 class StrategyConfig(BaseModel):
     symbol: str = "XAUUSD"
     ema_period: int = 200
@@ -38,3 +48,10 @@ class StrategyConfig(BaseModel):
     deviation: int = 20
     cooldown_seconds: int = 30
     ema_min_buffer: float = 0.15
+
+    # RL cost parameters
+    spread_points: float = 2.0
+    commission_per_lot: float = 0.5
+    take_profit_method: str = "none"  # none, atr, rr
+    take_profit_atr_multiplier: float = 1.5
+    take_profit_rr: float = 1.5

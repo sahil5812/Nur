@@ -1,15 +1,60 @@
 # Python
 __pycache__/
+*.py[cod]
+*.pyo
 *.pyc
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
 
-# MT5 runtime files
-command.txt
-trades.csv
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
 
-# Logs / env
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# Logs / env / scratch
+logs/
 *.log
 .env
-.venv/
+.env.*
+scratch/
+
+# Data / model artifacts
+*.pkl
+*.pickle
+*.h5
+*.model
+*.npz
+rl/models/*.zip
+data/*.csv
+!data/*.csv  # Keep CSV files for training/trading
+data/train_xauusd_m1.csv
+data/val_xauusd_m1.csv
+data/test_xauusd_m1.csv
+data/historical_xauusd_m1.csv
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+*$py.class

@@ -1,6 +1,7 @@
 import time
 import MetaTrader5 as mt5
-from datetime import datetime
+from datetime import datetime, timezone
+from core.guardian import RiskGuardian
 from core.models import StrategyConfig, RiskConfig
 from core.state import StateMachine
 from core.risk import RiskManager
@@ -12,6 +13,8 @@ from utils.logger import logger
 from utils.helpers import format_duration
 from utils.status_writer import write_status
 import shared_state
+from intelligence.news_filter import is_news_window
+from rl.agent import RLAgent
 
 def load_pending_commands() -> list[dict]:
     from database.db import _raw_conn
@@ -61,24 +64,41 @@ class TradingEngine:
         # 1. Configs
         self.strat_config = StrategyConfig()
         self.risk_config = RiskConfig()
-        
+
         # 2. Components
         self.storage = Storage()
         self.data_provider = DataProvider()
-        self.broker = Broker(self.storage)
+        self.broker = Broker(self.storage, self.strat_config)
         self.risk_manager = RiskManager(self.risk_config, self.storage)
         self.strategy = PullbackStrategy(self.strat_config)
         self.state_machine = StateMachine(self.strat_config.cooldown_seconds)
-        
+        self.rl_agent = RLAgent()  # RL agent for MARL confirmation
+        self.guardian = RiskGuardian(self.risk_config, self.storage, self.broker, self.strat_config.symbol)
+
         # 3. Share instances with Telegram thread via shared_state
         shared_state.broker = self.broker
         shared_state.storage = self.storage
         shared_state.engine_state = self.state_machine.current_state
-        
+
         # 4. Loop State
         self.active_ticket = None
         self.last_m1_time = None
         self.pullback_seen = False
+
+    def _build_rl_state_dict(self, m1_rates, signal):
+        """
+        Builds RL state dict with required market indicators
+        """
+        d1 = m1_rates[-1]
+        return {
+            'rsi': d1.get('rsi', 50),
+            'macd_hist': d1.get('macd_hist', 0),
+            'ema_distance_pct': d1.get('ema_distance_pct', 0),
+            'atr_normalized': d1.get('atr_normalized', 0),
+            'hour': datetime.now().hour,
+            'session': shared_state.engine_state,
+            'position': signal
+        }
 
     def run(self):
         logger.info("🚀 NUR BOT Trading Engine Starting...")
@@ -130,7 +150,7 @@ class TradingEngine:
                                         mt5.TIMEFRAME_M1,
                                         self.strat_config.ema_period + self.strat_config.atr_period + 3
                                     )
-                                    
+
                                     if tick and acc and m1_rates:
                                         m1_atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
                                         price = tick.ask if command == "BUY" else tick.bid
@@ -143,16 +163,23 @@ class TradingEngine:
                                         # Calculate lot size with risk multiplier
                                         volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier)
                                         volume = round(max(volume * risk_mult, 0.01), 2)
-                                        
+
                                         order_type = mt5.ORDER_TYPE_BUY if command == "BUY" else mt5.ORDER_TYPE_SELL
-                                        
+
+                                        # ---------- Risk check for manual orders ----------
+                                        if not self.risk_manager.check_margin(self.strat_config.symbol, order_type, volume, price):
+                                            logger.warning(f"⚠️  Manual {command} rejected: insufficient margin.")
+                                            update_command_status(cmd_id, "FAILED")
+                                            continue
+
                                         ticket = self.broker.send_order(
                                             self.strat_config.symbol,
                                             order_type,
                                             volume,
                                             sl_dist,
                                             comment=f"NUR SaaS {user_id}",
-                                            magic=999999
+                                            magic=999999,
+                                            atr=m1_atr
                                         )
                                         if ticket:
                                             self.active_ticket = ticket
@@ -256,6 +283,14 @@ class TradingEngine:
                         time.sleep(0.5)
                         continue
 
+                    # 🔒 RiskGuardian hard circuit breaker check
+                    guardian_result = self.guardian.check_and_apply()
+                    if guardian_result.tripped:
+                        self.state_machine.set_waiting()
+                        self.pullback_seen = False
+                        time.sleep(0.5)
+                        continue
+
                     current_state = self.state_machine.current_state
 
                     # --- FETCH DATA ---
@@ -310,38 +345,71 @@ class TradingEngine:
                         if self.last_m1_time == last_closed_bar.time:
                             time.sleep(0.2)
                             continue
-                        
+
                         self.last_m1_time = last_closed_bar.time
 
                         # Check Session filters and Account Risk Daily limits
                         if not self.risk_manager.is_in_trading_session():
                             time.sleep(0.2)
                             continue
-                            
+
                         if not self.risk_manager.check_daily_limits():
                             time.sleep(0.2)
                             continue
+
+                        # Check hard risk limits via RiskGuardian
+                        guardian_result = self.guardian.check_and_apply()
+                        if result.tripped:
+                            # already handled inside check_and_apply (hard stop, panic close, etc.)
+                            continue
+
+                        # Hard news blackout gate
+                        if self.risk_config.news_filter_enabled:
+                            in_news_window, news_event = is_news_window(
+                                buffer_minutes=self.risk_config.news_buffer_minutes
+                            )
+                            if in_news_window:
+                                logger.warning(f"🚨 News blackout active: {news_event}")
+                                if shared_state.send_message:
+                                    shared_state.send_message(f"🚨 News blackout active: {news_event}")
+                                time.sleep(0.2)
+                                continue
 
                         # Check strategy signals
                         signal, self.pullback_seen, log_msg = self.strategy.check_signals(
                             m1_rates, m5_rates, h1_rates, self.pullback_seen
                         )
-                        
+
                         # Periodic logging of system status
                         logger.info(log_msg)
 
                         if signal is not None:
+                            # RL confirmation veto
+                            state_dict = self._build_rl_state_dict(m1_rates, signal)
+                            rl_action = self.rl_agent.predict(state_dict)
+                            rl_action_map = {"BUY": mt5.ORDER_TYPE_BUY, "SELL": mt5.ORDER_TYPE_SELL, "HOLD": None}
+                            rl_order_type = rl_action_map.get(rl_action)
+
+                            if rl_order_type != signal:
+                                logger.warning(f"⚠️ RL veto: strategy={signal}, rl_action={rl_action}")
+                                time.sleep(0.2)
+                                continue
+
                             # Fetch latest tick and account info
                             tick = self.data_provider.get_tick(self.strat_config.symbol, force_refresh=True)
                             acc = mt5.account_info()
-                            
+
                             if tick and acc:
                                 price = tick.ask if signal == mt5.ORDER_TYPE_BUY else tick.bid
                                 m1_atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
-                                
+
                                 # Dynamic Lot size
                                 volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier)
-                                
+                                # Apply user risk multiplier for consistency
+                                user_info = get_user_risk_info(self.storage.current_user_id)
+                                risk_mult = user_info["risk_multiplier"]
+                                volume = round(max(volume * risk_mult, 0.01), 2)
+
                                 # Margin check validation
                                 if self.risk_manager.check_margin(self.strat_config.symbol, signal, volume, price):
                                     sl_dist = m1_atr * self.strat_config.sl_atr_multiplier
@@ -349,14 +417,15 @@ class TradingEngine:
                                         self.strat_config.symbol,
                                         signal,
                                         volume,
-                                        sl_dist
+                                        sl_dist,
+                                        atr=m1_atr
                                     )
                                     if ticket:
                                         self.active_ticket = ticket
                                         self.state_machine.set_in_trade()
                                         shared_state.engine_state = self.state_machine.current_state
                                         self.pullback_seen = False
-                                        
+
                                         # Send Telegram alerts
                                         t_type = "BUY" if signal == mt5.ORDER_TYPE_BUY else "SELL"
                                         if shared_state.send_message:

@@ -2,15 +2,16 @@ import time
 import MetaTrader5 as mt5
 from datetime import datetime
 from typing import List, Optional, Any
-from core.models import Tick
+from core.models import Tick, StrategyConfig
 from data.storage import Storage
 from utils.logger import logger
 import shared_state
 
 class Broker:
-    def __init__(self, storage: Storage):
+    def __init__(self, storage: Storage, strategy_config: StrategyConfig = None):
         self.storage = storage
         self.deviation = 20
+        self.strategy_config = strategy_config or StrategyConfig()
 
     def connect(self) -> bool:
         """
@@ -82,7 +83,7 @@ class Broker:
             return []
         return list(positions)
 
-    def send_order(self, symbol: str, order_type: int, volume: float, sl_distance: float, comment: Optional[str] = None, magic: int = 123456) -> Optional[int]:
+    def send_order(self, symbol: str, order_type: int, volume: float, sl_distance: float, comment: Optional[str] = None, magic: int = 123456, atr: float = None) -> Optional[int]:
         """
         Sends order with retries. Returns position ticket if successful.
         Tracks slippage (requested vs filled price) and logs open trade to DB.
@@ -100,7 +101,7 @@ class Broker:
             return None
 
         price = tick.ask if order_type == mt5.ORDER_TYPE_BUY else tick.bid
-        
+
         # Calculate SL
         if order_type == mt5.ORDER_TYPE_BUY:
             sl = price - sl_distance
@@ -108,9 +109,20 @@ class Broker:
         else:
             sl = price + sl_distance
             trade_type_str = "SELL"
-            
-        # Hard round sl
+
+        # Calculate TP based on configured method
+        tp = 0.0
+        if self.strategy_config.take_profit_method == "atr" and atr is not None:
+            tp_distance = atr * self.strategy_config.take_profit_atr_multiplier
+            tp = price + tp_distance if order_type == mt5.ORDER_TYPE_BUY else price - tp_distance
+        elif self.strategy_config.take_profit_method == "rr":
+            # RR-based TP: risk * reward_ratio
+            tp_distance = sl_distance * self.strategy_config.take_profit_rr
+            tp = price + tp_distance if order_type == mt5.ORDER_TYPE_BUY else price - tp_distance
+
+        # Hard round sl and tp
         sl = round(sl, 2)
+        tp = round(tp, 2)
 
         if comment is None:
             comment = f"NUR SaaS {self.storage.current_user_id}"
@@ -122,6 +134,7 @@ class Broker:
             "type": order_type,
             "price": price,
             "sl": sl,
+            "tp": tp,
             "deviation": self.deviation,
             "comment": comment,
             "magic": magic,
