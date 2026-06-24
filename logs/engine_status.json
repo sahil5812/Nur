@@ -1,8 +1,8 @@
 {
   "market": "XAUUSD",
   "state": "WAITING",
-  "ema200": 4078.03,
-  "timestamp": "2026-06-24T03:28:29.852858",
+  "ema200": 4077.57,
+  "timestamp": "2026-06-24T03:30:44.103405",
   "trend": "NONE",
-  "last_close": 4056.0
+  "last_close": 4060.58
 }
