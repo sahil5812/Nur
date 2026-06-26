@@ -87,13 +87,13 @@ class RiskManager:
 
         return True
 
-    def calculate_lot_size(self, balance: float, atr: float, sl_atr_multiplier: float) -> float:
+    def calculate_lot_size(self, balance: float, atr: float, sl_atr_multiplier: float, min_sl_dist: float = 10.0) -> float:
         """
         Calculates lot size based on account balance, risk percent, and SL distance.
         Formula: risk_amount / (sl_distance * 100) for gold (1 lot = 100 oz).
         """
         risk_amount = balance * (self.config.risk_percent / 100.0)
-        sl_distance = atr * sl_atr_multiplier
+        sl_distance = max(atr * sl_atr_multiplier, min_sl_dist)
         
         if sl_distance <= 0:
             return 0.01

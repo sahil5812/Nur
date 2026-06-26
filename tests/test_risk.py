@@ -43,18 +43,32 @@ def risk_manager(risk_config, mock_storage):
 
 class TestRiskManager:
     def test_calculate_lot_size(self, risk_manager):
-        # Normal calculation:
+        # 1. Verification with small min_sl_dist to test basic math:
         # risk_amount = 10000 * 1% = 100
-        # sl_distance = atr (2.0) * sl_atr_multiplier (1.5) = 3.0
+        # sl_distance = max(atr (2.0) * sl_atr_multiplier (1.5), min_sl_dist (2.0)) = 3.0
         # lot = 100 / (3.0 * 100) = 0.33
-        lot = risk_manager.calculate_lot_size(balance=10000.0, atr=2.0, sl_atr_multiplier=1.5)
+        lot = risk_manager.calculate_lot_size(balance=10000.0, atr=2.0, sl_atr_multiplier=1.5, min_sl_dist=2.0)
         assert lot == 0.33
 
+        # 2. Verification with default min_sl_dist (10.0):
+        # risk_amount = 10000 * 1% = 100
+        # sl_distance = max(atr (2.0) * sl_atr_multiplier (1.5), min_sl_dist (10.0)) = 10.0
+        # lot = 100 / (10.0 * 100) = 0.10
+        lot_default = risk_manager.calculate_lot_size(balance=10000.0, atr=2.0, sl_atr_multiplier=1.5)
+        assert lot_default == 0.10
+
+        # 3. Verification when ATR is larger than the floor:
+        # risk_amount = 10000 * 1% = 100
+        # sl_distance = max(atr (10.0) * sl_atr_multiplier (1.5), min_sl_dist (10.0)) = 15.0
+        # lot = 100 / (15.0 * 100) = 0.07
+        lot_large_atr = risk_manager.calculate_lot_size(balance=10000.0, atr=10.0, sl_atr_multiplier=1.5)
+        assert lot_large_atr == 0.07
+
         # Guard calculation: SL distance <= 0
-        lot_zero = risk_manager.calculate_lot_size(balance=10000.0, atr=0.0, sl_atr_multiplier=1.5)
+        lot_zero = risk_manager.calculate_lot_size(balance=10000.0, atr=0.0, sl_atr_multiplier=1.5, min_sl_dist=0.0)
         assert lot_zero == 0.01
 
-        lot_neg = risk_manager.calculate_lot_size(balance=10000.0, atr=-1.0, sl_atr_multiplier=1.5)
+        lot_neg = risk_manager.calculate_lot_size(balance=10000.0, atr=-1.0, sl_atr_multiplier=1.5, min_sl_dist=-5.0)
         assert lot_neg == 0.01
 
     @patch("core.risk.shared_state")
@@ -131,3 +145,16 @@ class TestRiskManager:
         # Check result failure
         mock_check_result.retcode = 10014
         assert risk_manager.check_margin("XAUUSD", 0, 1.0, 1800.0) is False
+
+    def test_min_sl_dist_floor(self, risk_manager):
+        # When ATR * multiplier is less than min_sl_dist
+        # sl_distance = max(1.0 * 1.5, 10.0) = 10.0
+        # lot = 100 / (10.0 * 100) = 0.10
+        lot = risk_manager.calculate_lot_size(balance=10000.0, atr=1.0, sl_atr_multiplier=1.5, min_sl_dist=10.0)
+        assert lot == 0.10
+
+        # When ATR * multiplier is greater than min_sl_dist
+        # sl_distance = max(10.0 * 1.5, 10.0) = 15.0
+        # lot = 100 / (15.0 * 100) = 0.07
+        lot_large = risk_manager.calculate_lot_size(balance=10000.0, atr=10.0, sl_atr_multiplier=1.5, min_sl_dist=10.0)
+        assert lot_large == 0.07

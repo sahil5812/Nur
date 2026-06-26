@@ -197,14 +197,14 @@ class TradingEngine:
                                     if tick and acc and m1_rates:
                                         m1_atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
                                         price = tick.ask if command == "BUY" else tick.bid
-                                        sl_dist = m1_atr * self.strat_config.sl_atr_multiplier
+                                        sl_dist = max(m1_atr * self.strat_config.sl_atr_multiplier, self.strat_config.min_sl_dist)
                                         
                                         user_info = get_user_risk_info(user_id)
                                         risk_mult = user_info["risk_multiplier"]
                                         user_name = user_info["name"]
                                         
                                         # Calculate lot size with risk multiplier
-                                        volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier)
+                                        volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier, self.strat_config.min_sl_dist)
                                         volume = round(max(volume * risk_mult, 0.01), 2)
 
                                         order_type = mt5.ORDER_TYPE_BUY if command == "BUY" else mt5.ORDER_TYPE_SELL
@@ -442,7 +442,7 @@ class TradingEngine:
                                 m1_atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
 
                                 # Dynamic Lot size
-                                volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier)
+                                volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier, self.strat_config.min_sl_dist)
                                 # Apply user risk multiplier for consistency
                                 user_info = get_user_risk_info(self.storage.current_user_id)
                                 risk_mult = user_info["risk_multiplier"]
@@ -450,7 +450,7 @@ class TradingEngine:
 
                                 # Margin check validation
                                 if self.risk_manager.check_margin(self.strat_config.symbol, signal, volume, price):
-                                    sl_dist = m1_atr * self.strat_config.sl_atr_multiplier
+                                    sl_dist = max(m1_atr * self.strat_config.sl_atr_multiplier, self.strat_config.min_sl_dist)
                                     ticket = self.broker.send_order(
                                         self.strat_config.symbol,
                                         signal,
@@ -522,7 +522,7 @@ class TradingEngine:
                             m1_atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
                             
                             if tick and m1_atr > 0:
-                                trail_distance = m1_atr * self.strat_config.trail_atr_multiplier
+                                trail_distance = max(m1_atr * self.strat_config.trail_atr_multiplier, self.strat_config.min_sl_dist)
                                 
                                 if active_pos.type == mt5.ORDER_TYPE_BUY:
                                     new_sl = tick.bid - trail_distance

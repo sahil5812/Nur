@@ -81,7 +81,7 @@ _rl_agent = None
 SYMBOL = SLEEP_TIME = COOLDOWN_SECONDS = DEVIATION = None
 EMA_MIN_BUFFER = ATR_MULTIPLIER = TRAIL_ATR_MULT = SL_ATR_MULT = PULLBACK_ATR_MULT = None
 RISK_PERCENT = DAILY_LOSS_LIMIT = DAILY_PROFIT_TARGET = None
-MAX_TRADES_PER_DAY = MIN_SCORE = EMA_PERIOD = ATR_PERIOD = None
+MAX_TRADES_PER_DAY = MIN_SCORE = EMA_PERIOD = ATR_PERIOD = MIN_SL_DIST = None
 M1_TF = H1_TF = H4_TF = None
 
 # Loss protection & RSI guard
@@ -107,7 +107,7 @@ def _lazy_init():
     global detect_regime, get_threshold, REGIME_LABELS, is_news_window
     global logger, trade_log
     global _paper, _rl_agent
-    global SYMBOL, M1_TF, H1_TF, H4_TF, EMA_PERIOD, ATR_PERIOD
+    global SYMBOL, M1_TF, H1_TF, H4_TF, EMA_PERIOD, ATR_PERIOD, MIN_SL_DIST
     global SLEEP_TIME, COOLDOWN_SECONDS, DEVIATION
     global EMA_MIN_BUFFER, ATR_MULTIPLIER, TRAIL_ATR_MULT, SL_ATR_MULT, PULLBACK_ATR_MULT
     global RISK_PERCENT, DAILY_LOSS_LIMIT, DAILY_PROFIT_TARGET
@@ -198,6 +198,7 @@ def _lazy_init():
     DAILY_PROFIT_TARGET = config.DAILY_PROFIT_TARGET
     MAX_TRADES_PER_DAY  = config.MAX_TRADES_PER_DAY
     MIN_SCORE           = config.MIN_SCORE_TO_TRADE
+    MIN_SL_DIST         = config.MIN_SL_DIST
 
 
     _initialized = True
@@ -262,7 +263,7 @@ def calculate_lot(atr: float, score: int, user_id: int = 1, risk_multiplier: flo
         return 0.01
     balance     = account.balance
     risk_amount = balance * (RISK_PERCENT / 100) * risk_multiplier
-    sl_distance = atr * SL_ATR_MULT
+    sl_distance = max(atr * SL_ATR_MULT, MIN_SL_DIST)
     base_lot    = risk_amount / (sl_distance * 100)
     multiplier  = 1.50 if score >= 95 else 1.30 if score >= 85 else 1.00 if score >= 75 else 0.70
     stats = load_stats(user_id=user_id)
@@ -280,7 +281,7 @@ def send_order(user_id: int, risk_multiplier: float, order_type: int, atr: float
         return False
 
     price = tick.ask if order_type == mt5.ORDER_TYPE_BUY else tick.bid
-    sl    = price - atr * SL_ATR_MULT if order_type == mt5.ORDER_TYPE_BUY else price + atr * SL_ATR_MULT
+    sl    = price - max(atr * SL_ATR_MULT, MIN_SL_DIST) if order_type == mt5.ORDER_TYPE_BUY else price + max(atr * SL_ATR_MULT, MIN_SL_DIST)
     lot   = calculate_lot(atr, score, user_id=user_id, risk_multiplier=risk_multiplier)
     side  = "BUY" if order_type == mt5.ORDER_TYPE_BUY else "SELL"
 
@@ -342,11 +343,11 @@ def trail_stop_loss(position, atr: float) -> None:
     tick = mt5.symbol_info_tick(SYMBOL)
     if tick is None: return
     if position.type == mt5.ORDER_TYPE_BUY:
-        new_sl = tick.bid - atr * TRAIL_ATR_MULT
+        new_sl = tick.bid - max(atr * TRAIL_ATR_MULT, MIN_SL_DIST)
         if position.sl == 0 or new_sl > position.sl:
             modify_sl(position, new_sl)
     elif position.type == mt5.ORDER_TYPE_SELL:
-        new_sl = tick.ask + atr * TRAIL_ATR_MULT
+        new_sl = tick.ask + max(atr * TRAIL_ATR_MULT, MIN_SL_DIST)
         if position.sl == 0 or new_sl < position.sl:
             modify_sl(position, new_sl)
 
@@ -843,9 +844,9 @@ def _tick() -> None:
         stats = load_stats(user_id=user_id)
         if stats["today_trades"] >= MAX_TRADES_PER_DAY:
             continue
-        if check_daily_lock(DAILY_LOSS_LIMIT, user_id=user_id):
+        if check_daily_lock(DAILY_LOSS_LIMIT * risk_multiplier, user_id=user_id):
             continue
-        if check_profit_lock(DAILY_PROFIT_TARGET, user_id=user_id):
+        if check_profit_lock(DAILY_PROFIT_TARGET * risk_multiplier, user_id=user_id):
             continue
 
         # ── Live PnL check & Stop trailing for active user ────
@@ -982,7 +983,7 @@ def _tick() -> None:
 
                 # ── Breakeven Stop Loss: move SL to entry once profit > BREAKEVEN_ATR_MULT × ATR ──
                 if not ustate.get("breakeven_done", False):
-                    breakeven_threshold = atr * BREAKEVEN_ATR_MULT * user_position.volume * 100
+                    breakeven_threshold = max(atr * BREAKEVEN_ATR_MULT, MIN_SL_DIST) * user_position.volume * 100
                     if user_position.profit >= breakeven_threshold:
                         entry_price = ustate["entry_price"]
                         if user_position.type == mt5.ORDER_TYPE_BUY and (user_position.sl == 0 or user_position.sl < entry_price):

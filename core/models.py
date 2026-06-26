@@ -47,6 +47,7 @@ class StrategyConfig(BaseModel):
     deviation: int = 20
     cooldown_seconds: int = 30
     ema_min_buffer: float = 0.15
+    min_sl_dist: float = 10.0
 
     # RL cost parameters
     spread_points: float = 2.0
