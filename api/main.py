@@ -118,14 +118,31 @@ def shutdown():
     return {"status": "shutting_down"}
 
 
+# Cache dict to avoid calling mt5.initialize() on every single websocket tick or page reload
+_cached_balances = {}  # user_id -> (balance_value, timestamp)
+BALANCE_CACHE_TTL = 15.0  # cache for 15 seconds
+
 def load_stats_with_balance(user_id: int):
     base_stats = dict(load_stats(user_id=user_id))
-    import MetaTrader5 as mt5
-    balance = 10000.0
-    if mt5.initialize():
-        acc = mt5.account_info()
-        if acc:
-            balance = acc.balance
+    import time
+    
+    now = time.time()
+    cached = _cached_balances.get(user_id)
+    if cached and (now - cached[1]) < BALANCE_CACHE_TTL:
+        balance = cached[0]
+    else:
+        fallback_balance = cached[0] if cached else 10000.0
+        balance = fallback_balance
+        import MetaTrader5 as mt5
+        try:
+            if mt5.initialize():
+                acc = mt5.account_info()
+                if acc:
+                    balance = acc.balance
+        except Exception:
+            pass
+        _cached_balances[user_id] = (balance, now)
+        
     base_stats["balance"] = balance
     return base_stats
 
