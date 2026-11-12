@@ -3,7 +3,13 @@ from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
+import warnings
 import jwt
+try:
+    from jwt.exceptions import InsecureKeyLengthWarning
+    warnings.filterwarnings("ignore", category=InsecureKeyLengthWarning)
+except ImportError:
+    pass
 import warnings
 # Silence pyjwt HMAC length warning for legacy tokens
 try:
