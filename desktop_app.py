@@ -240,7 +240,7 @@ SPLASH_HTML = """
 
     function checkBackend() {
       fetch('http://127.0.0.1:8000/api/health', { mode: 'cors' })
-        .then(r => { if (r.ok) window.location.href = 'http://127.0.0.1:8000/'; })
+        .then(r => { if (r.ok) window.location.href = 'http://127.0.0.1:8000/?t=' + Date.now(); })
         .catch(() => {});
       
       elapsed += CHECK_INTERVAL;
@@ -317,17 +317,59 @@ def create_desktop_shortcut():
     except Exception as exc:
         _get_logger().warning(f"Could not create desktop shortcut: {exc}")
 
-def start_fastapi():
-    """Start FastAPI Uvicorn server in a thread."""
+def _free_port_8000():
+    """Ensure port 8000 is not blocked by a lingering process."""
     try:
-        import uvicorn
-        from api.main import app
-        config_uvicorn = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="warning")
-        config_uvicorn.install_signal_handlers = False
-        server = uvicorn.Server(config_uvicorn)
-        server.run()
-    except Exception as exc:
-        _get_logger().error(f"FastAPI Server error: {exc}")
+        import subprocess
+        res = subprocess.run(["netstat", "-ano"], capture_output=True, text=True)
+        my_pid = str(os.getpid())
+        killed = set()
+        for line in res.stdout.splitlines():
+            if ":8000 " in line:
+                parts = line.strip().split()
+                if len(parts) >= 5:
+                    pid = parts[-1]
+                    if pid.isdigit() and pid != my_pid and pid != "0" and pid not in killed:
+                        subprocess.run(["taskkill", "/F", "/PID", pid], capture_output=True)
+                        killed.add(pid)
+    except Exception:
+        pass
+
+def start_fastapi():
+    """Start FastAPI Uvicorn server in a thread with retry and socket reuse."""
+    import socket
+    import time
+    logger = _get_logger()
+    
+    # 1. Clear any stale listener
+    _free_port_8000()
+
+    # 2. Try starting uvicorn up to 5 times (waiting for TIME_WAIT to clear)
+    for attempt in range(1, 6):
+        try:
+            # Check if port is bindable
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                s.bind(("127.0.0.1", 8000))
+                s.close()
+            except OSError as e:
+                s.close()
+                logger.warning(f"Port 8000 not immediately bindable (attempt {attempt}/5): {e}. Waiting 1.5s...")
+                _free_port_8000()
+                time.sleep(1.5)
+                continue
+
+            import uvicorn
+            from api.main import app
+            config_uvicorn = uvicorn.Config(app, host="127.0.0.1", port=8000, log_level="warning")
+            config_uvicorn.install_signal_handlers = False
+            server = uvicorn.Server(config_uvicorn)
+            server.run()
+            break
+        except Exception as exc:
+            logger.error(f"FastAPI Server error (attempt {attempt}/5): {exc}")
+            time.sleep(1.5)
 
 def start_bot_engine():
     """Start Bot Engine loop in a thread."""
@@ -507,8 +549,26 @@ def _boot_services():
         logger.error(f"Background service initialization failed: {exc}", exc_info=True)
 
 
+def _clean_webview_cache():
+    """Purge stale HTTP disk cache and service workers while preserving Local Storage."""
+    cache_dirs = [
+        APPDATA_DIR / "webview_cache" / "EBWebView" / "Default" / "Cache",
+        APPDATA_DIR / "webview_cache" / "EBWebView" / "Default" / "Code Cache",
+        APPDATA_DIR / "webview_cache" / "EBWebView" / "Default" / "Service Worker",
+    ]
+    for c_dir in cache_dirs:
+        try:
+            if c_dir.exists():
+                import shutil
+                shutil.rmtree(c_dir, ignore_errors=True)
+        except Exception:
+            pass
+
 def main():
     global window
+
+    # Purge stale webview cache so latest compiled UI bundles always load
+    _clean_webview_cache()
 
     # ── INSTANT WINDOW: Show splash screen immediately ────────────
     # The window renders in under 1 second while all services boot in background

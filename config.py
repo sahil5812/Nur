@@ -74,6 +74,7 @@ ALLOWED_CHAT_IDS: set[int] = {
 # Trading Mode
 # ─────────────────────────────────────────────
 PAPER_TRADING: bool = _get("PAPER_TRADING", "false").lower() == "true"
+BYPASS_NEWS_FILTER: bool = _get("BYPASS_NEWS_FILTER", "false").lower() == "true"
 
 # ─────────────────────────────────────────────
 # Risk Settings
@@ -83,7 +84,6 @@ DAILY_LOSS_LIMIT: float  = float(_get("DAILY_LOSS_LIMIT",     "-50.0"))
 DAILY_PROFIT_TARGET: float = float(_get("DAILY_PROFIT_TARGET", "100.0"))
 MAX_TRADES_PER_DAY: int  = int(_get("MAX_TRADES_PER_DAY",     "5"))
 MIN_SCORE_TO_TRADE: int  = int(_get("MIN_SCORE_TO_TRADE",     "70"))
-MIN_SL_DIST: float       = float(_get("MIN_SL_DIST",        "10.0"))
 
 # ─────────────────────────────────────────────
 # Strategy

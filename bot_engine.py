@@ -76,12 +76,13 @@ _atr_history: list[float] = []
 # Paper trader & RL agent (lazy-initialized)
 _paper = None
 _rl_agent = None
+_rf_filter = None
 
 # ─── Constants (set after config loads) ───────────────────────
 SYMBOL = SLEEP_TIME = COOLDOWN_SECONDS = DEVIATION = None
 EMA_MIN_BUFFER = ATR_MULTIPLIER = TRAIL_ATR_MULT = SL_ATR_MULT = PULLBACK_ATR_MULT = None
 RISK_PERCENT = DAILY_LOSS_LIMIT = DAILY_PROFIT_TARGET = None
-MAX_TRADES_PER_DAY = MIN_SCORE = EMA_PERIOD = ATR_PERIOD = MIN_SL_DIST = None
+MAX_TRADES_PER_DAY = MIN_SCORE = EMA_PERIOD = ATR_PERIOD = None
 M1_TF = H1_TF = H4_TF = None
 
 # Loss protection & RSI guard
@@ -106,8 +107,8 @@ def _lazy_init():
     global calculate_rsi, calculate_macd
     global detect_regime, get_threshold, REGIME_LABELS, is_news_window
     global logger, trade_log
-    global _paper, _rl_agent
-    global SYMBOL, M1_TF, H1_TF, H4_TF, EMA_PERIOD, ATR_PERIOD, MIN_SL_DIST
+    global _paper, _rl_agent, _rf_filter
+    global SYMBOL, M1_TF, H1_TF, H4_TF, EMA_PERIOD, ATR_PERIOD
     global SLEEP_TIME, COOLDOWN_SECONDS, DEVIATION
     global EMA_MIN_BUFFER, ATR_MULTIPLIER, TRAIL_ATR_MULT, SL_ATR_MULT, PULLBACK_ATR_MULT
     global RISK_PERCENT, DAILY_LOSS_LIMIT, DAILY_PROFIT_TARGET
@@ -174,9 +175,18 @@ def _lazy_init():
     from rl.agent import RLAgent
     _rl_agent_inst = RLAgent()
 
+    # Phase 5: Random Forest Meta-Filter (Pruning & Trade Filter)
+    try:
+        from intelligence.rf_filter import RandomForestMetaFilter
+        _rf_filter_inst = RandomForestMetaFilter()
+        _rf_filter_inst.load()
+    except Exception as exc:
+        _rf_filter_inst = None
+
     # Assign to globals used by rest of module
     globals()['_paper'] = _paper_inst
     globals()['_rl_agent'] = _rl_agent_inst
+    globals()['_rf_filter'] = _rf_filter_inst
 
     # ─── Constants ────────────────────────────────────────────
     SYMBOL       = config.SYMBOL
@@ -198,7 +208,6 @@ def _lazy_init():
     DAILY_PROFIT_TARGET = config.DAILY_PROFIT_TARGET
     MAX_TRADES_PER_DAY  = config.MAX_TRADES_PER_DAY
     MIN_SCORE           = config.MIN_SCORE_TO_TRADE
-    MIN_SL_DIST         = config.MIN_SL_DIST
 
 
     _initialized = True
@@ -257,22 +266,28 @@ def _get_session() -> str:
     return "ASIAN"
 
 
-def calculate_lot(atr: float, score: int, user_id: int = 1, risk_multiplier: float = 1.0) -> float:
+def calculate_lot(atr: float, score: int, user_id: int = 1, risk_multiplier: float = 1.0, conviction: float = 1.0) -> float:
     account = mt5.account_info()
     if account is None:
         return 0.01
     balance     = account.balance
     risk_amount = balance * (RISK_PERCENT / 100) * risk_multiplier
-    sl_distance = max(atr * SL_ATR_MULT, MIN_SL_DIST)
+    sl_distance = atr * SL_ATR_MULT
     base_lot    = risk_amount / (sl_distance * 100)
     multiplier  = 1.50 if score >= 95 else 1.30 if score >= 85 else 1.00 if score >= 75 else 0.70
+
+    # Institutional conviction-scaled position sizing
+    # Reference: Jiang et al. (arXiv:1706.10059) & Kelly Criterion
+    conviction_mult = max(0.5, min(float(conviction), 1.8))
+    multiplier *= conviction_mult
+
     stats = load_stats(user_id=user_id)
     if stats["loss_streak"] >= 3:   multiplier *= 0.60
     elif stats["loss_streak"] == 2: multiplier *= 0.80
     return round(max(base_lot * multiplier, 0.01), 2)
 
 
-def send_order(user_id: int, risk_multiplier: float, order_type: int, atr: float, score: int, magic: int = 123456) -> bool:
+def send_order(user_id: int, risk_multiplier: float, order_type: int, atr: float, score: int, magic: int = 123456, conviction: float = 1.0) -> bool:
     ustate = _get_user_state(user_id)
 
     tick = mt5.symbol_info_tick(SYMBOL)
@@ -281,8 +296,8 @@ def send_order(user_id: int, risk_multiplier: float, order_type: int, atr: float
         return False
 
     price = tick.ask if order_type == mt5.ORDER_TYPE_BUY else tick.bid
-    sl    = price - max(atr * SL_ATR_MULT, MIN_SL_DIST) if order_type == mt5.ORDER_TYPE_BUY else price + max(atr * SL_ATR_MULT, MIN_SL_DIST)
-    lot   = calculate_lot(atr, score, user_id=user_id, risk_multiplier=risk_multiplier)
+    sl    = price - atr * SL_ATR_MULT if order_type == mt5.ORDER_TYPE_BUY else price + atr * SL_ATR_MULT
+    lot   = calculate_lot(atr, score, user_id=user_id, risk_multiplier=risk_multiplier, conviction=conviction)
     side  = "BUY" if order_type == mt5.ORDER_TYPE_BUY else "SELL"
 
     ustate["entry_price"] = price
@@ -343,11 +358,11 @@ def trail_stop_loss(position, atr: float) -> None:
     tick = mt5.symbol_info_tick(SYMBOL)
     if tick is None: return
     if position.type == mt5.ORDER_TYPE_BUY:
-        new_sl = tick.bid - max(atr * TRAIL_ATR_MULT, MIN_SL_DIST)
+        new_sl = tick.bid - atr * TRAIL_ATR_MULT
         if position.sl == 0 or new_sl > position.sl:
             modify_sl(position, new_sl)
     elif position.type == mt5.ORDER_TYPE_SELL:
-        new_sl = tick.ask + max(atr * TRAIL_ATR_MULT, MIN_SL_DIST)
+        new_sl = tick.ask + atr * TRAIL_ATR_MULT
         if position.sl == 0 or new_sl < position.sl:
             modify_sl(position, new_sl)
 
@@ -620,6 +635,7 @@ def main() -> None:
 def _tick() -> None:
     global last_candle_time, _ema_history, _atr_history, _current_regime
     global _current_atr, _current_ema
+    tick = None
 
     # 1. Real-time manual override handling (runs on every tick, i.e., every 200ms)
     active_users = []
@@ -691,13 +707,27 @@ def _tick() -> None:
 
     # ── News filter (Phase 2) ─────────────────────────────────
     blocked, event_name = is_news_window()
-    if blocked:
+    if blocked and not getattr(config, "BYPASS_NEWS_FILTER", False):
         logger.info(f"📰 News blackout: {event_name} — skipping")
         try:
-            write_status(SYMBOL, f"NEWS_BLACKOUT ({event_name})", None)
+            tick = mt5.symbol_info_tick(SYMBOL)
+            price = tick.bid if tick else None
+            ema = globals().get("_current_ema", price)
+            write_status(
+                SYMBOL,
+                f"NEWS_BLACKOUT ({event_name})",
+                ema,
+                trend="WAITING",
+                last_close=price,
+                rf_prob=0.50,
+                rf_approved=False,
+                h4_bias="RANGE",
+                h1_trend="WAITING",
+                regime="NEWS_BLACKOUT",
+            )
         except Exception:
             pass
-        time.sleep(60); return
+        time.sleep(15); return
 
     # ── Spread filter ─────────────────────────────────────────
     if not config.PAPER_TRADING and not spread_ok(SYMBOL):
@@ -721,11 +751,24 @@ def _tick() -> None:
             price = tick.bid if tick else None
             u1 = _get_user_state(1)
             ema = globals().get("_current_ema", price)
-            write_status(SYMBOL, u1["state"], ema, trend=u1["trend"], last_close=price)
+            last_rf = globals().get("_last_rf_prob", 0.55)
+            write_status(
+                SYMBOL,
+                u1["state"],
+                ema,
+                trend=u1["trend"],
+                last_close=price,
+                rf_prob=last_rf,
+                rf_approved=(last_rf >= 0.42),
+                h4_bias=globals().get("_last_h4_bias", "BULLISH"),
+                h1_trend=globals().get("_last_h1_trend", "BULLISH"),
+                regime=globals().get("_last_regime", "TRENDING"),
+            )
         except Exception:
             pass
         time.sleep(SLEEP_TIME); return
     last_candle_time = last_closed["time"]
+    tick = mt5.symbol_info_tick(SYMBOL)
 
     # ── Fetch full M1 + H1 + H4 data only when a new candle closed ──
     m1_rates = mt5.copy_rates_from_pos(SYMBOL, M1_TF, 0, EMA_PERIOD + ATR_PERIOD + 40)
@@ -763,6 +806,7 @@ def _tick() -> None:
 
     # ── H4 bias (Phase 2) ─────────────────────────────────────
     h4_trend = TREND_NONE
+    h4_ema   = None
     if h4_rates is not None and len(h4_rates) >= EMA_PERIOD + 3:
         h4_closes = [r["close"] for r in h4_rates]
         h4_ema    = calculate_ema(h4_closes[-EMA_PERIOD:], EMA_PERIOD)
@@ -821,6 +865,64 @@ def _tick() -> None:
     else:
         _rl_agent.has_manual_override = False
 
+    # ── Quantitative Feature Engineering for RF Meta-Filter & RL ──
+    safe_atr = max(atr, 0.1)
+    z_m1_val = (price - ema) / safe_atr
+    z_h1_val = (price - h1_ema) / safe_atr if 'h1_ema' in locals() and h1_ema else (1.0 if h1_trend == TREND_BULLISH else -1.0)
+    z_m5_val = (price - h4_ema) / safe_atr if 'h4_ema' in locals() and h4_ema else (1.0 if h4_trend == TREND_BULLISH else -1.0)
+    z_align_val = min(abs(z_h1_val), abs(z_m5_val)) * (1.0 if (z_h1_val * z_m5_val) > 0 else -1.0)
+
+    spread_diff = (tick.ask - tick.bid) if (tick and getattr(tick, 'ask', None) and getattr(tick, 'bid', None)) else 0.2
+    spread_ratio_val = float(spread_diff / safe_atr)
+
+    realized_vol_20_val = 0.0
+    if len(closes) >= 21:
+        log_rets = [math.log(max(closes[i], 1e-8) / max(closes[i-1], 1e-8)) for i in range(-20, 0)]
+        mean_ret = sum(log_rets) / len(log_rets)
+        var_ret = sum((r - mean_ret) ** 2 for r in log_rets) / len(log_rets)
+        realized_vol_20_val = float(math.sqrt(var_ret))
+
+    rsi_slope_5_val = 0.0
+    if len(closes) >= 20:
+        rsi_prev5 = calculate_rsi(closes[:-5], period=14)
+        rsi_slope_5_val = float((rsi - rsi_prev5) / 5.0)
+
+    # ── RF Meta-Filter Baseline Prediction & Alignment ────────
+    _current_rf_prob = 0.55
+    _h = datetime.now(timezone.utc).hour
+    _base_rl_state = {
+        "rsi":              rsi,
+        "rsi_slope_5":      rsi_slope_5_val,
+        "macd_hist":        macd_l - macd_s,
+        "ema_distance_pct": (price - ema) / max(ema, 1.0) * 100.0,
+        "atr_normalized":   (atr - 1.5) / 1.0,
+        "z_m1":             z_m1_val,
+        "z_h1":             z_h1_val,
+        "z_m5":             z_m5_val,
+        "z_alignment":      z_align_val,
+        "realized_vol_20":  realized_vol_20_val,
+        "spread_ratio":     spread_ratio_val,
+        "hour":             _h,
+        "hour_sin":         math.sin(2 * math.pi * _h / 24.0),
+        "hour_cos":         math.cos(2 * math.pi * _h / 24.0),
+        "session":          0 if _get_session() == "ASIAN" else (1 if _get_session() == "LONDON" else 2),
+        "session_london":   1.0 if 7 <= _h < 16 else 0.0,
+        "session_ny":       1.0 if 12 <= _h < 21 else 0.0,
+        "session_asian":    1.0 if 0 <= _h < 8 else 0.0,
+        "position":         0,
+        "log_ret":          math.log(closes[-2] / closes[-3]) if len(closes) >= 3 else 0.0,
+        "candle_time":      last_candle_time,
+    }
+    if _rf_filter is not None and getattr(_rf_filter, "is_fitted", False):
+        try:
+            _current_rf_prob = _rf_filter.predict_probability(_base_rl_state)
+        except Exception:
+            pass
+    globals()["_last_rf_prob"] = _current_rf_prob
+    globals()["_last_h4_bias"] = h4_trend
+    globals()["_last_h1_trend"] = h1_trend
+    globals()["_last_regime"] = REGIME_LABELS.get(_current_regime, _current_regime) if REGIME_LABELS else str(_current_regime)
+
     # ── Loop through active SaaS accounts dynamically ─────────
     for user in active_users:
         user_id = user["user_id"]
@@ -844,9 +946,9 @@ def _tick() -> None:
         stats = load_stats(user_id=user_id)
         if stats["today_trades"] >= MAX_TRADES_PER_DAY:
             continue
-        if check_daily_lock(DAILY_LOSS_LIMIT * risk_multiplier, user_id=user_id):
+        if check_daily_lock(DAILY_LOSS_LIMIT, user_id=user_id):
             continue
-        if check_profit_lock(DAILY_PROFIT_TARGET * risk_multiplier, user_id=user_id):
+        if check_profit_lock(DAILY_PROFIT_TARGET, user_id=user_id):
             continue
 
         # ── Live PnL check & Stop trailing for active user ────
@@ -898,13 +1000,26 @@ def _tick() -> None:
             _pos_code = 0  # flat
             if user_position:
                 _pos_code = 1 if user_position.type == mt5.ORDER_TYPE_BUY else 2
+            _h = datetime.now(timezone.utc).hour
             _rl_state = {
                 "rsi":              rsi,
+                "rsi_slope_5":      rsi_slope_5_val,
                 "macd_hist":        macd_l - macd_s,
                 "ema_distance_pct": (price - ema) / max(ema, 1.0) * 100.0,
                 "atr_normalized":   (atr - 1.5) / 1.0,  # rough normalization
-                "hour":             datetime.now(timezone.utc).hour,
+                "z_m1":             z_m1_val,
+                "z_h1":             z_h1_val,
+                "z_m5":             z_m5_val,
+                "z_alignment":      z_align_val,
+                "realized_vol_20":  realized_vol_20_val,
+                "spread_ratio":     spread_ratio_val,
+                "hour":             _h,
+                "hour_sin":         math.sin(2 * math.pi * _h / 24.0),
+                "hour_cos":         math.cos(2 * math.pi * _h / 24.0),
                 "session":          0 if _get_session() == "ASIAN" else (1 if _get_session() == "LONDON" else 2),
+                "session_london":   1.0 if 7 <= _h < 16 else 0.0,
+                "session_ny":       1.0 if 12 <= _h < 21 else 0.0,
+                "session_asian":    1.0 if 0 <= _h < 8 else 0.0,
                 "position":         _pos_code,
                 "log_ret":          math.log(closes[-2] / closes[-3]) if len(closes) >= 3 else 0.0,
                 "candle_time":      last_candle_time,
@@ -949,7 +1064,19 @@ def _tick() -> None:
                     )
                     logger.info(f"User {user['name']} BUY score={score}/{regime_score_threshold} | {reasons}")
                     if score >= 60 and score >= regime_score_threshold:
-                        if send_order(user_id, risk_multiplier, mt5.ORDER_TYPE_BUY, atr, score):
+                        # ── Random Forest Meta-Filter Evaluation ──
+                        rf_prob = 0.50
+                        if _rf_filter is not None and getattr(_rf_filter, "is_fitted", False):
+                            rf_threshold = 0.38 if (score >= 85 and not rl_degenerate) else 0.42
+                            rf_ok, rf_prob, rf_reason = _rf_filter.evaluate_trade("BUY", _rl_state, min_prob_override=rf_threshold)
+                            if not rf_ok:
+                                logger.warning(f"User {user['name']} {rf_reason}")
+                                continue
+                            logger.info(f"User {user['name']} {rf_reason}")
+
+                        base_conv = float(rl_conf.get("BUY", 1.0)) if not rl_degenerate else 1.0
+                        buy_conviction = max(base_conv, float(rf_prob * 1.5))
+                        if send_order(user_id, risk_multiplier, mt5.ORDER_TYPE_BUY, atr, score, conviction=buy_conviction):
                             ustate["state"] = STATE_IN_TRADE
                             ustate["trend"] = TREND_BULLISH
                             ustate["pullback_seen"] = False
@@ -966,7 +1093,19 @@ def _tick() -> None:
                     )
                     logger.info(f"User {user['name']} SELL score={score}/{regime_score_threshold} | {reasons}")
                     if score >= 60 and score >= regime_score_threshold:
-                        if send_order(user_id, risk_multiplier, mt5.ORDER_TYPE_SELL, atr, score):
+                        # ── Random Forest Meta-Filter Evaluation ──
+                        rf_prob = 0.50
+                        if _rf_filter is not None and getattr(_rf_filter, "is_fitted", False):
+                            rf_threshold = 0.38 if (score >= 85 and not rl_degenerate) else 0.42
+                            rf_ok, rf_prob, rf_reason = _rf_filter.evaluate_trade("SELL", _rl_state, min_prob_override=rf_threshold)
+                            if not rf_ok:
+                                logger.warning(f"User {user['name']} {rf_reason}")
+                                continue
+                            logger.info(f"User {user['name']} {rf_reason}")
+
+                        base_conv = float(rl_conf.get("SELL", 1.0)) if not rl_degenerate else 1.0
+                        sell_conviction = max(base_conv, float(rf_prob * 1.5))
+                        if send_order(user_id, risk_multiplier, mt5.ORDER_TYPE_SELL, atr, score, conviction=sell_conviction):
                             ustate["state"] = STATE_IN_TRADE
                             ustate["trend"] = TREND_BEARISH
                             ustate["pullback_seen"] = False
@@ -983,7 +1122,7 @@ def _tick() -> None:
 
                 # ── Breakeven Stop Loss: move SL to entry once profit > BREAKEVEN_ATR_MULT × ATR ──
                 if not ustate.get("breakeven_done", False):
-                    breakeven_threshold = max(atr * BREAKEVEN_ATR_MULT, MIN_SL_DIST) * user_position.volume * 100
+                    breakeven_threshold = atr * BREAKEVEN_ATR_MULT * user_position.volume * 100
                     if user_position.profit >= breakeven_threshold:
                         entry_price = ustate["entry_price"]
                         if user_position.type == mt5.ORDER_TYPE_BUY and (user_position.sl == 0 or user_position.sl < entry_price):
@@ -1004,7 +1143,23 @@ def _tick() -> None:
     # Write fallback engine status for user 1 (Default Tenant)
     try:
         u1 = _get_user_state(1)
-        write_status(SYMBOL, u1["state"], ema, trend=u1["trend"], last_close=price)
+        regime_label = REGIME_LABELS.get(_current_regime, _current_regime) if REGIME_LABELS else str(_current_regime)
+        write_status(
+            SYMBOL,
+            u1["state"],
+            ema,
+            trend=u1["trend"],
+            last_close=price,
+            rf_prob=_current_rf_prob,
+            rf_approved=(_current_rf_prob >= 0.54),
+            h4_bias=h4_trend,
+            h1_trend=h1_trend,
+            regime=regime_label,
+            z_m1=round((price - ema) / max(atr, 0.1), 2),
+            rsi=round(rsi, 1),
+            atr=round(atr, 2),
+            spread=round((tick.ask - tick.bid), 2) if tick else 0.20,
+        )
         shared_state.engine_state = u1["state"]
     except Exception:
         pass

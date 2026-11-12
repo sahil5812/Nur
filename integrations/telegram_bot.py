@@ -345,7 +345,20 @@ def run_telegram():
     # Conversational chat handler for general text messages
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, chat))
 
+    # Error handler for network conflicts and polling errors
+    async def on_error(update: object, context: ContextTypes.DEFAULT_TYPE) -> None:
+        import telegram.error
+        if isinstance(context.error, telegram.error.Conflict):
+            logger.warning("⚠️ Telegram Conflict: another bot instance is polling with this token.")
+            return
+        logger.error(f"Telegram error: {context.error}")
+
+    app.add_error_handler(on_error)
+
     logger.info("📡 Telegram bot starting polling loop...")
     
     # Run polling under this thread's event loop
-    app.run_polling()
+    try:
+        app.run_polling(drop_pending_updates=True)
+    except Exception as exc:
+        logger.warning(f"Telegram polling exited: {exc}")

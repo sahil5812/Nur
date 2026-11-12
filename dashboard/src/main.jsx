@@ -9,12 +9,17 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Register PWA service worker
+// Cleanly unregister any stale service workers and purge browser cache
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js')
-      .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
-      .catch((err) => console.error('Service Worker registration failed:', err));
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (let reg of registrations) {
+      reg.unregister();
+    }
+  });
+}
+if (typeof caches !== 'undefined') {
+  caches.keys().then((keys) => {
+    keys.forEach((key) => caches.delete(key));
   });
 }
 

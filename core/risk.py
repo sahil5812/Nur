@@ -1,5 +1,6 @@
 import MetaTrader5 as mt5
-from datetime import datetime
+from datetime import datetime, time
+from typing import Dict, Any, Optional
 from core.models import RiskConfig
 from data.storage import Storage
 from utils.logger import logger
@@ -87,10 +88,18 @@ class RiskManager:
 
         return True
 
-    def calculate_lot_size(self, balance: float, atr: float, sl_atr_multiplier: float, min_sl_dist: float = 10.0) -> float:
-        """
-        Calculates lot size based on account balance, risk percent, and SL distance.
-        Formula: risk_amount / (sl_distance * 100) for gold (1 lot = 100 oz).
+    def calculate_lot_size(
+        self,
+        balance: float,
+        atr: float,
+        sl_atr_multiplier: float,
+        min_sl_dist: float = 10.0,
+        conviction: float = 1.0,
+    ) -> float:
+        """Calculates lot size based on balance, risk percent, SL distance, and conviction.
+        
+        Reference: Jiang et al. (arXiv:1706.10059) & Kelly Criterion Fractional Sizing.
+        Conviction multiplier scales lot size smoothly between 0.5x (cautious) and 1.8x (high-conviction).
         """
         risk_amount = balance * (self.config.risk_percent / 100.0)
         sl_distance = max(atr * sl_atr_multiplier, min_sl_dist)
@@ -99,9 +108,12 @@ class RiskManager:
             return 0.01
 
         # Standard gold calculation: 1 lot = 100 value per point.
-        lot = risk_amount / (sl_distance * 100.0)
+        base_lot = risk_amount / (sl_distance * 100.0)
+        conviction_factor = max(0.5, min(float(conviction), 1.8))
+        dynamic_lot = base_lot * conviction_factor
+
         # Standard limits for lots (min 0.01)
-        lot = round(max(lot, 0.01), 2)
+        lot = round(max(dynamic_lot, 0.01), 2)
         return lot
 
     def check_margin(self, symbol: str, order_type: int, volume: float, price: float) -> bool:

@@ -210,6 +210,48 @@ class GaussianHMM:
         return states
 
     # ------------------------------------------------------------------
+    # Soft Posterior Probability Decoding (Forward-Backward Gamma)
+    # Reference: Rabiner (1989); Qin et al. (arXiv:2104.09700); Singh (arXiv:2310.03775)
+    # ------------------------------------------------------------------
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        """Compute exact posterior probabilities gamma_t(i) = P(state_t = i | X_1:T).
+        
+        Returns:
+            gamma: Array of shape (T, n_states), where gamma[t, i] is the probability
+                   of being in state i at time step t. Sum of each row is 1.0.
+        """
+        T = X.shape[0]
+        B = self._get_emissions(X)
+        alpha, c = self._forward(B)
+        beta = self._backward(B, c)
+        gamma = alpha * beta
+        gamma = gamma / (np.sum(gamma, axis=1, keepdims=True) + 1e-12)
+        return gamma
+
+    def predict_proba_online(
+        self, feat: np.ndarray, last_alpha: np.ndarray | None = None
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Online forward step probability for streaming real-time MT5 candles.
+        
+        Args:
+            feat: 1D feature vector for the latest closed candle.
+            last_alpha: Previous forward variable vector (shape: n_states). If None, uses startprob.
+            
+        Returns:
+            (gamma, alpha): gamma is normalized posterior probability vector (sums to 1.0),
+                            alpha is the updated forward variable.
+        """
+        if last_alpha is None:
+            last_alpha = self.startprob.copy() if self.startprob is not None else np.full(self.n_states, 1.0 / self.n_states)
+            
+        prior = np.dot(last_alpha, self.transmat)
+        emiss = np.array([self._pdf(feat, s) for s in range(self.n_states)])
+        alpha = prior * np.maximum(emiss, 1e-100)
+        norm = np.sum(alpha) + 1e-12
+        gamma = alpha / norm
+        return gamma, alpha / norm
+
+    # ------------------------------------------------------------------
     # Save & Load Parameters (JSON Serialization)
     # ------------------------------------------------------------------
     def save(self, file_path: Path | str) -> None:

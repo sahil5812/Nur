@@ -102,18 +102,17 @@ class RLAgent:
     def _build_observation(state: dict[str, Any]) -> np.ndarray:
         """Convert a raw state dictionary into a normalised numpy vector.
 
-        Normalization scheme (must match ``XAUUSDTradingEnv._get_obs``):
+        Normalization scheme (must match ``XAUUSDTradingEnv``):
             * rsi           → (rsi − 50) / 50, clipped to [-1, 1]
-            * macd_hist     → tanh(macd_hist / max(atr, 0.01))  (ATR-scaled)
-            * ema_distance_pct → clipped to [-1, 1]
-            * atr_normalized   → clipped to [-1, 1]
+            * macd_hist     → tanh(macd_hist)   (pre-normalised by caller)
+            * ema_distance_pct → clipped to [-1, 1]   (pre-normalised)
+            * atr_normalized   → clipped to [-1, 1]   (pre-normalised)
             * hour          → hour / 23 × 2 − 1
             * session       → session / 3 × 2 − 1
             * position      → {0: 0.0, 1: 1.0, 2: −1.0}
         """
         rsi: float = state.get("rsi", 50.0)
         macd_hist: float = state.get("macd_hist", 0.0)
-        atr: float = state.get("atr", 1.0)
         ema_dist: float = state.get("ema_distance_pct", 0.0)
         atr_norm: float = state.get("atr_normalized", 0.0)
         hour: float = state.get("hour", 12.0)
@@ -121,7 +120,7 @@ class RLAgent:
         position: int = state.get("position", 0)
 
         rsi_norm: float = float(np.clip((rsi - 50.0) / 50.0, -1.0, 1.0))
-        macd_norm: float = float(np.tanh(macd_hist / max(atr, 0.01)))
+        macd_norm: float = float(np.tanh(macd_hist))
         ema_norm: float = float(np.clip(ema_dist, -1.0, 1.0))
         atr_n: float = float(np.clip(atr_norm, -1.0, 1.0))
         hour_norm: float = hour / 23.0 * 2.0 - 1.0
@@ -170,14 +169,12 @@ class RLAgent:
                 states = self._hmm.predict(X)
                 state = int(states[-1])
                 
-                # Sequence-level posterior confidence check using Forward-Backward algorithm
-                B = self._hmm._get_emissions(X)
-                alpha, c = self._hmm._forward(B)
-                beta = self._hmm._backward(B, c)
-                gamma = alpha * beta
-                gamma = gamma / (np.sum(gamma, axis=1, keepdims=True) + 1e-12)
-                
+                # Sequence-level posterior confidence check using Soft Gamma Probabilities
+                # Reference: Rabiner (1989), Qin et al. (arXiv:2104.09700)
+                gamma = self._hmm.predict_proba(X)
                 confidence = float(gamma[-1, state])
+                state_dict["gamma_range"] = float(gamma[-1, 0])
+                state_dict["gamma_trend"] = float(gamma[-1, 1])
                 return state, confidence
             except Exception as e:
                 logger.warning("HMM sequence decode failed, falling back to PDF: %s", e)
@@ -189,6 +186,8 @@ class RLAgent:
             total = p0 + p1 + 1e-12
             state = 0 if p0 > p1 else 1
             confidence = p0 / total if state == 0 else p1 / total
+            state_dict["gamma_range"] = float(p0 / total)
+            state_dict["gamma_trend"] = float(p1 / total)
             return state, float(confidence)
         except Exception as e:
             logger.warning("HMM PDF computation failed: %s", e)
@@ -301,6 +300,17 @@ class RLAgent:
         except Exception:
             logger.exception("Failed to compute action probabilities – returning uniform.")
             return {"HOLD": 0.333, "BUY": 0.333, "SELL": 0.333}
+
+    def get_action_with_conviction(self, state_dict: dict[str, Any]) -> tuple[str, float]:
+        """Return the chosen action alongside the agent's directional conviction score [0.0, 1.0].
+        
+        Reference: Jiang et al. (arXiv:1706.10059) & Zhang et al. (arXiv:1911.10107).
+        Used by the execution engine to dynamically scale position size.
+        """
+        action = self.predict(state_dict)
+        probs = self.get_confidence(state_dict)
+        conviction = float(probs.get(action, 0.5))
+        return action, conviction
 
     def sync_with_manual_positions(self, manual_positions_list: list) -> dict:
         """When user manually trades, agent reads it and adapts."""

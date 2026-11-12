@@ -180,12 +180,6 @@ def _get_session(hour: int) -> int:
     return 3       # Off
 
 
-# ─── New Cost Parameters ─────────────────────────────────────────
-# Typical XAUUSD costs (in price points)
-DEFAULT_SPREAD_POINTS = 2.0      # ~2 points spread (0.2 pips for XAUUSD)
-DEFAULT_COMMISSION_PER_LOT = 0.5 # $0.5 per lot per side (round-trip = 1.0)
-
-
 class XAUUSDTradingEnv(gym.Env):
     """
     Gymnasium RL environment that replays XAUUSD M1 candles.
@@ -194,10 +188,6 @@ class XAUUSDTradingEnv(gym.Env):
     All features normalized to approximately [-1, 1].
 
     Action Discrete(3): 0=HOLD, 1=BUY, 2=SELL
-
-    Reward (matching README formula):
-      R = ΔEquity − α·Drawdown − β·TxCosts
-      where α = 0.5 (drawdown penalty), β = 1.0 (transaction cost weight)
     """
 
     metadata = {"render_modes": []}
@@ -209,12 +199,21 @@ class XAUUSDTradingEnv(gym.Env):
         split: str = 'train',  # 'train', 'val', 'test', or 'full'
         target_regime: str | None = None,
         hmm_model_path: str | Path | None = None,
-        # Cost parameters
-        spread_points: float = DEFAULT_SPREAD_POINTS,
-        commission_per_lot: float = DEFAULT_COMMISSION_PER_LOT,
-        drawdown_penalty_alpha: float = 0.5,
+        spread_points: float | None = None,
+        spread_cost: float = 0.25,
+        commission_per_lot: float = 0.5,
+        slippage_cost: float = 0.05,
+        drawdown_penalty_alpha: float = 0.0,
+        volatility_scaling: bool = False,
+        **kwargs,
     ):
         super().__init__()
+
+        self.spread_points = float(spread_points if spread_points is not None else spread_cost)
+        self.commission_per_lot = float(commission_per_lot)
+        self.slippage_cost = float(slippage_cost)
+        self._drawdown_alpha = float(drawdown_penalty_alpha)
+        self.volatility_scaling = volatility_scaling
 
         if csv_path is None:
             split_files = {
@@ -282,22 +281,12 @@ class XAUUSDTradingEnv(gym.Env):
         )
         self.action_space = spaces.Discrete(3)
 
-        # Cost parameters
-        self._spread_points = spread_points
-        self._commission_per_lot = commission_per_lot
-        self._drawdown_alpha = drawdown_penalty_alpha
-
         # Episode state
         self._start_idx = WARMUP
         self._step_idx  = 0
         self._position  = POS_FLAT
         self._entry_price = 0.0
         self._total_reward = 0.0
-        # Equity tracking for drawdown penalty
-        self._equity = 0.0
-        self._peak_equity = 0.0
-        # Default lot size (can be overridden via config)
-        self._lot_size = 1.0
 
     # ─── Gym API ──────────────────────────────────────────────
 
@@ -322,7 +311,7 @@ class XAUUSDTradingEnv(gym.Env):
 
     def step(self, action: int):
         idx = self._start_idx + self._step_idx
-
+        
         # Override action to HOLD if current market state does not match the target regime
         if self._hmm_states is not None and self.target_regime is not None:
             current_state = self._hmm_states[idx]  # 0 for Range, 1 for Trend
@@ -332,6 +321,11 @@ class XAUUSDTradingEnv(gym.Env):
                 action = ACTION_HOLD
 
         price = self._closes[idx]
+        atr = self._atr[idx] if not np.isnan(self._atr[idx]) else self._atr_mean
+        atr_safe = max(float(atr), 0.1)
+
+        tx_cost = self.spread_points + self.commission_per_lot
+
         reward = 0.0
         info = {}
 
@@ -340,57 +334,58 @@ class XAUUSDTradingEnv(gym.Env):
             if self._position == POS_FLAT:
                 self._position = POS_LONG
                 self._entry_price = price
-                cost = self._transaction_cost()
-                reward -= cost
-                self._equity -= cost
-                info["entry_cost"] = cost
+                delta_equity = -tx_cost
+                self._equity += delta_equity
+                reward = delta_equity
             elif self._position == POS_SHORT:
                 # Close short, realise PnL
-                pnl = self._entry_price - price
-                cost = self._transaction_cost()
-                reward += pnl - cost
-                self._equity += pnl
-                info["trade_pnl"] = pnl
-                info["entry_cost"] = cost
+                raw_pnl = self._entry_price - price
+                delta_equity = raw_pnl - tx_cost
+                self._equity += delta_equity
+                reward = delta_equity
+                info["trade_pnl"] = raw_pnl
                 self._position = POS_FLAT
                 self._entry_price = 0.0
             else:
-                # Already long → invalid
-                reward -= 2.0
+                # Already long → invalid action penalty
+                reward = -2.0
 
         elif action == ACTION_SELL:
             if self._position == POS_FLAT:
                 self._position = POS_SHORT
                 self._entry_price = price
-                cost = self._transaction_cost()
-                reward -= cost
-                self._equity -= cost
-                info["entry_cost"] = cost
+                delta_equity = -tx_cost
+                self._equity += delta_equity
+                reward = delta_equity
             elif self._position == POS_LONG:
                 # Close long, realise PnL
-                pnl = price - self._entry_price
-                cost = self._transaction_cost()
-                reward += pnl - cost
-                self._equity += pnl
-                info["trade_pnl"] = pnl
-                info["entry_cost"] = cost
+                raw_pnl = price - self._entry_price
+                delta_equity = raw_pnl - tx_cost
+                self._equity += delta_equity
+                reward = delta_equity
+                info["trade_pnl"] = raw_pnl
                 self._position = POS_FLAT
                 self._entry_price = 0.0
             else:
-                # Already short → invalid
-                reward -= 2.0
+                # Already short → invalid action penalty
+                reward = -2.0
 
         else:  # HOLD
             if self._position != POS_FLAT:
-                reward -= 0.1  # holding penalty
+                reward = -0.1
+            else:
+                reward = 0.0
 
-        # Floating drawdown penalty: α·Drawdown
-        self._peak_equity = max(self._peak_equity, self._equity)
+        # Drawdown calculation & penalty: R = ΔEquity − α·Drawdown − β·TxCosts
+        # Reference: Moody & Saffell (2001), Felizardo et al. (arXiv:2212.06064)
+        if self._equity > self._peak_equity:
+            self._peak_equity = self._equity
         drawdown = max(0.0, self._peak_equity - self._equity)
-        reward -= self._drawdown_alpha * drawdown
-        info["drawdown"] = drawdown
-        info["equity"] = self._equity
-        info["peak_equity"] = self._peak_equity
+        if self._drawdown_alpha > 0.0 and drawdown > 0.0:
+            reward -= self._drawdown_alpha * drawdown
+
+        if self.volatility_scaling:
+            reward = reward / atr_safe
 
         self._total_reward += reward
         self._step_idx += 1
@@ -401,22 +396,17 @@ class XAUUSDTradingEnv(gym.Env):
         # Force close at episode end
         if truncated and self._position != POS_FLAT:
             if self._position == POS_LONG:
-                pnl = price - self._entry_price
+                raw_pnl = price - self._entry_price
             else:
-                pnl = self._entry_price - price
-            cost = self._transaction_cost()
-            reward += pnl - cost
-            self._equity += pnl
-            info["forced_close_pnl"] = pnl
-            info["entry_cost"] = cost
+                raw_pnl = self._entry_price - price
+            delta_equity = raw_pnl - tx_cost
+            self._equity += delta_equity
+            reward += delta_equity
+            info["forced_close_pnl"] = raw_pnl
             self._position = POS_FLAT
 
         obs = self._get_obs()
         return obs, reward, terminated, truncated, info
-
-    def _transaction_cost(self) -> float:
-        """Spread + commission cost per trade side."""
-        return self._spread_points + (self._commission_per_lot * self._lot_size)
 
     # ─── Internal ─────────────────────────────────────────────
 

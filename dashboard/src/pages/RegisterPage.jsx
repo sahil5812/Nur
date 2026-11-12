@@ -5,10 +5,10 @@ import { getApiBase } from '../config';
 import { validateEmail, validatePassword, validatePasswordMatch } from '../utils/validation';
 
 const FRIENDLY_ERRORS = {
-  "invalid_email": "Hmm, that email doesn't look right 🤔",
-  "email_taken": "This email is already registered! Login instead?",
-  "weak_password": "Password needs to be stronger 💪",
-  "server_error": "Something went wrong. Please try again."
+  "invalid_email": "Invalid email address format.",
+  "email_taken": "An account with this email already exists.",
+  "weak_password": "Password does not meet required strength criteria.",
+  "server_error": "Registration server error. Please retry."
 };
 
 export default function RegisterPage() {

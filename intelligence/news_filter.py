@@ -9,7 +9,6 @@ from utils.logger import get_logger
 
 logger = get_logger(__name__)
 
-# Default buffer, can be overridden via function argument
 BUFFER_MINUTES = 30
 
 # FOMC dates 2025-2026 (year, month, day) — decision at ~18:00 UTC
@@ -41,43 +40,43 @@ def _safe_weekday(y, m, d):
         return -1
 
 
-def _within(now: datetime, event: datetime) -> bool:
-    return abs((now - event).total_seconds()) / 60 <= BUFFER_MINUTES
+def _within(now: datetime, event: datetime, buffer_minutes: int = BUFFER_MINUTES) -> bool:
+    return abs((now - event).total_seconds()) / 60 <= buffer_minutes
 
 
 def is_news_window(now: datetime | None = None, buffer_minutes: int = BUFFER_MINUTES) -> tuple[bool, str]:
     """
     Returns (True, event_name) if inside a news blackout, else (False, "").
-
-    Args:
-        now: datetime check point (defaults to now in UTC)
-        buffer_minutes: minutes before/after event to block trading
     """
     if now is None:
         now = datetime.now(timezone.utc)
 
-    # Temporarily override the global BUFFER_MINUTES for this check
-    global BUFFER_MINUTES
-    original = BUFFER_MINUTES
-    BUFFER_MINUTES = buffer_minutes
+    # NFP: 1st Friday each month, 13:30 UTC
+    nfp_day  = _first_friday(now.year, now.month)
+    nfp_time = datetime(now.year, now.month, nfp_day, 13, 30, tzinfo=timezone.utc)
+    if _within(now, nfp_time, buffer_minutes):
+        return True, f"NFP ({nfp_time.strftime('%H:%M')} UTC)"
 
-    try:
-        nfp_day  = _first_friday(now.year, now.month)
-        nfp_time = datetime(now.year, now.month, nfp_day, 13, 30, tzinfo=timezone.utc)
-        if _within(now, nfp_time):
-            return True, f"NFP ({nfp_time.strftime('%H:%M')} UTC)"
+    # FOMC: hardcoded dates, 18:00 UTC
+    for (y, mo, d) in _FOMC:
+        t = datetime(y, mo, d, 18, 0, tzinfo=timezone.utc)
+        if _within(now, t, buffer_minutes):
+            return True, f"FOMC ({t.strftime('%Y-%m-%d')})"
 
-        for (y, mo, d) in _FOMC:
-            t = datetime(y, mo, d, 18, 0, tzinfo=timezone.utc)
-            if _within(now, t):
-                return True, f"FOMC ({t.strftime('%Y-%m-%d')})"
+    # CPI: 2nd Tuesday each month, 13:30 UTC
+    cpi_day = _second_tuesday(now.year, now.month)
+    if cpi_day is not None:
+        cpi_time = datetime(now.year, now.month, cpi_day, 13, 30, tzinfo=timezone.utc)
+        if _within(now, cpi_time, buffer_minutes):
+            return True, "CPI (est. 13:30 UTC)"
 
-        cpi_day = _second_tuesday(now.year, now.month)
-        if cpi_day:
-            cpi_time = datetime(now.year, now.month, cpi_day, 13, 30, tzinfo=timezone.utc)
-            if _within(now, cpi_time):
-                return True, f"CPI (est. {cpi_time.strftime('%H:%M')} UTC)"
+    return False, ""
 
-        return False, ""
-    finally:
-        BUFFER_MINUTES = original
+    # CPI: ~2nd Tuesday each month, 13:30 UTC
+    cpi_day = _second_tuesday(now.year, now.month)
+    if cpi_day:
+        cpi_time = datetime(now.year, now.month, cpi_day, 13, 30, tzinfo=timezone.utc)
+        if _within(now, cpi_time):
+            return True, f"CPI (est. {cpi_time.strftime('%H:%M')} UTC)"
+
+    return False, ""

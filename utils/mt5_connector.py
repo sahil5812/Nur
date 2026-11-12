@@ -42,11 +42,21 @@ def _is_healthy() -> bool:
 
 def connect_mt5() -> bool:
     """
-    Attempt a single fresh MT5 connection.
-    Shuts down first to clear any stale state.
+    Attempt an MT5 connection.
+    First tries attaching to any active running desktop MT5 terminal.
+    If that fails, attempts initialization with configured credentials.
     """
-    mt5.shutdown()
-    
+    # Attempt 1: Attach directly to running desktop terminal
+    try:
+        if mt5.initialize():
+            acc = mt5.account_info()
+            if acc:
+                logger.info(f"MT5 connected to active desktop terminal | account={acc.login} | server={acc.server}")
+                return True
+    except Exception as exc:
+        logger.debug(f"Direct attach failed: {exc}")
+
+    # Attempt 2: Initialize with configured credentials
     import config
     init_kwargs = {}
     if hasattr(config, "MT5_PATH") and config.MT5_PATH:
@@ -58,9 +68,15 @@ def connect_mt5() -> bool:
     if hasattr(config, "MT5_SERVER") and config.MT5_SERVER:
         init_kwargs["server"] = config.MT5_SERVER
 
-    if mt5.initialize(**init_kwargs):
-        logger.info("MT5 connected successfully")
-        return True
+    if init_kwargs:
+        try:
+            mt5.shutdown()
+        except Exception:
+            pass
+        if mt5.initialize(**init_kwargs):
+            logger.info("MT5 connected successfully with credentials")
+            return True
+
     logger.error(f"MT5 initialize() failed — {mt5.last_error()}")
     return False
 

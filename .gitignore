@@ -1,60 +1,48 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyc
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
-
-# Virtual environments
-venv/
-.venv/
-env/
-ENV/
-env.bak/
-venv.bak/
-
-# IDE / editor
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
-.project
-.classpath
-.settings/
-*.sublime-workspace
-*.sublime-project
-
-# Logs / env / scratch
-logs/
-*.log
+# Environments & Secrets
 .env
 .env.*
-scratch/
+!.env.example
+venv/
+.venv/
+ENV/
+env/
 
-# Data / model artifacts
-*.pkl
-*.pickle
-*.h5
-*.model
-*.npz
-rl/models/*.zip
-data/*.csv
-!data/*.csv  # Keep CSV files for training/trading
-data/train_xauusd_m1.csv
-data/val_xauusd_m1.csv
-data/test_xauusd_m1.csv
-data/historical_xauusd_m1.csv
-
-# Test artifacts
-.pytest_cache/
-.coverage
-htmlcov/
+# Python cache & build
 __pycache__/
 *.py[cod]
 *$py.class
+build/
+*.egg-info/
+
+# Logs & Runtime State
+*.log
+logs/
+*.sqlite
+*.sqlite3
+database/nur_trading.db
+command.txt
+trades.csv
+
+# Node / Frontend
+node_modules/
+dashboard/node_modules/
+dashboard/dist/
+.npm
+.eslintcache
+
+# IDE & OS
+.idea/
+.vscode/
+database/.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.DS_Store
+Thumbs.db
+
+# Large Temp / Nested Folders
+scratch/
+Nur-main/
+research_papers/*.pdf

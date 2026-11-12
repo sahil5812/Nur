@@ -211,6 +211,36 @@ def step3_train_ppo(regime: str, timesteps: int = 2_000_000):
     return val_mean
 
 
+def step6_train_rf_filter():
+    """Train and prune Random Forest Meta-Filter."""
+    step_banner(6, "Training & Pruning Random Forest Meta-Filter")
+    from intelligence.rf_filter import RandomForestMetaFilter
+    from rl.trading_env import _load_csv
+
+    train_csv = Path(PROJECT_ROOT) / "data" / "train_xauusd_m1.csv"
+    if not train_csv.is_file():
+        train_csv = Path(PROJECT_ROOT) / "data" / "historical_xauusd_m1.csv"
+    df = _load_csv(train_csv)
+
+    rf_filter = RandomForestMetaFilter(
+        min_prob_threshold=0.52,
+        prune_importance_threshold=0.02,
+        collinear_threshold=0.88,
+        max_depth=8,
+        min_samples_leaf=30,
+        min_samples_split=60,
+        ccp_alpha=0.0,
+        n_estimators=100,
+        random_state=42,
+    )
+    metrics = rf_filter.train(df, verbose=True)
+    save_model_path = Path(PROJECT_ROOT) / "rl" / "models" / "rf_meta_filter.joblib"
+    save_meta_path = Path(PROJECT_ROOT) / "rl" / "models" / "rf_filter_meta.json"
+    rf_filter.save(save_model_path, save_meta_path)
+    print(f"[OK] Random Forest Meta-Filter saved to {save_model_path}")
+    return metrics
+
+
 def main():
     print("\n" + "=" * 60)
     print("  🔄 NUR BOT — FULL MARL RETRAINING PIPELINE")
@@ -234,6 +264,9 @@ def main():
         label = regime.upper() if regime != "none" else "FALLBACK"
         results[label] = val_reward
 
+    # Step 6: Train & Prune Random Forest Meta-Filter
+    rf_metrics = step6_train_rf_filter()
+
     # Summary
     total_time = time.time() - overall_start
     hours, rem = divmod(total_time, 3600)
@@ -248,6 +281,7 @@ def main():
     for agent, reward in results.items():
         emoji = "✅" if reward > -50 else "⚠️"
         print(f"    {emoji} {agent:>10}: {reward:+.4f}")
+    print(f"    ✅  RF-FILTER: {rf_metrics.get('filtered_win_rate', 0.0):.1%} win rate (Lift: {rf_metrics.get('win_rate_lift_pct', 0.0):+.1f}%)")
     print(f"\n  Ab bot restart karo — naye models automatically load ho jayenge!")
     print("=" * 60)
 

@@ -5,16 +5,16 @@ import { saveAccount, getSavedAccounts, switchAccount, removeAccount, isTokenVal
 import { getApiBase } from '../config';
 
 const FRIENDLY_ERRORS = {
-  "invalid_email": "Hmm, that email doesn't look right 🤔",
-  "email_taken": "This email is already registered! Login instead?",
-  "wrong_password": "Wrong password. Try again or reset it.",
-  "account_not_found": "No account found with this email.",
-  "weak_password": "Password needs to be stronger 💪",
-  "google_only_login": "This email uses Google Sign-in. Click 'Continue with Google'.",
-  "email_uses_password": "This email uses password login. Enter email & password.",
-  "google_error": "Google sign-in failed. Try again.",
-  "google_not_configured": "Google Sign-In is not configured yet. Please use email/password login, or ask your admin to set up Google OAuth credentials.",
-  "server_error": "Something went wrong. Please try again."
+  "invalid_email": "Invalid email address format.",
+  "email_taken": "An account with this email already exists.",
+  "wrong_password": "Incorrect password. Please verify your credentials.",
+  "account_not_found": "No registered account found with this email address.",
+  "weak_password": "Password does not meet required strength criteria.",
+  "google_only_login": "This account is linked with Google sign-in. Use 'Continue with Google'.",
+  "email_uses_password": "Enter your email and password to sign in.",
+  "google_error": "Google authentication failed. Please retry.",
+  "google_not_configured": "Google authentication is not configured for this server.",
+  "server_error": "Authentication server error. Please retry."
 };
 
 export default function LoginPage() {

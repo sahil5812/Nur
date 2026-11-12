@@ -9,7 +9,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from core.market import MT5MarketData
 from core.strategy import TradingStrategy
-from backtest.legacy_risk_manager import RiskManager
+from core.risk_manager import RiskManager
 from core.observer import TradeObserver
 from core.tracker import TradeTracker
 import pandas as pd

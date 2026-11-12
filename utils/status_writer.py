@@ -11,6 +11,15 @@ def write_status(
     timestamp=None,
     trend: str | None = None,
     last_close: float | None = None,
+    rf_prob: float | None = None,
+    rf_approved: bool | None = None,
+    h4_bias: str | None = None,
+    h1_trend: str | None = None,
+    regime: str | None = None,
+    z_m1: float | None = None,
+    rsi: float | None = None,
+    atr: float | None = None,
+    spread: float | None = None,
 ):
     payload = {
         "market": market,
@@ -22,6 +31,24 @@ def write_status(
         payload["trend"] = trend
     if last_close is not None:
         payload["last_close"] = round(float(last_close), 2)
+    if rf_prob is not None:
+        payload["rf_prob"] = round(float(rf_prob), 4)
+    if rf_approved is not None:
+        payload["rf_approved"] = bool(rf_approved)
+    if h4_bias is not None:
+        payload["h4_bias"] = str(h4_bias)
+    if h1_trend is not None:
+        payload["h1_trend"] = str(h1_trend)
+    if regime is not None:
+        payload["regime"] = str(regime)
+    if z_m1 is not None:
+        payload["z_m1"] = round(float(z_m1), 2)
+    if rsi is not None:
+        payload["rsi"] = round(float(rsi), 1)
+    if atr is not None:
+        payload["atr"] = round(float(atr), 2)
+    if spread is not None:
+        payload["spread"] = round(float(spread), 2)
 
     STATUS_FILE.parent.mkdir(exist_ok=True)
     STATUS_FILE.write_text(json.dumps(payload, indent=2))

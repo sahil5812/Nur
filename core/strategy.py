@@ -1,7 +1,8 @@
 import MetaTrader5 as mt5
 from typing import List, Tuple, Optional
-from core.models import Bar, StrategyConfig
+from core.models import Bar, Tick, StrategyConfig
 from utils.logger import logger
+from utils.helpers import safe_divide
 
 class PullbackStrategy:
     TREND_NONE = "NONE"
@@ -10,6 +11,8 @@ class PullbackStrategy:
 
     def __init__(self, config: StrategyConfig):
         self.config = config
+        self.last_conviction: float = 1.0
+        self.last_z_scores: dict[str, float] = {"h1": 0.0, "m5": 0.0, "m1": 0.0}
 
     def calculate_ema(self, values: List[float], period: int) -> float:
         """
@@ -77,31 +80,53 @@ class PullbackStrategy:
         h1_closes = [b.close for b in h1_bars]
         h1_ema = self.calculate_ema(h1_closes[-self.config.ema_period:], self.config.ema_period)
         last_h1_close = h1_bars[-2].close
-        
-        if last_h1_close > h1_ema:
-            h1_trend = self.TREND_BULLISH
-        elif last_h1_close < h1_ema:
-            h1_trend = self.TREND_BEARISH
-        else:
-            h1_trend = self.TREND_NONE
+        h1_atr = self.calculate_atr(h1_bars, self.config.atr_period)
 
         # M5 Structure Confirmation
         m5_closes = [b.close for b in m5_bars]
         m5_ema = self.calculate_ema(m5_closes[-self.config.ema_period:], self.config.ema_period)
         last_m5_close = m5_bars[-2].close
-        
-        if last_m5_close > m5_ema:
+        m5_atr = self.calculate_atr(m5_bars, self.config.atr_period)
+
+        # Multi-Timeframe Normalized Z-Score Distance
+        # Reference: Wang et al. (AAAI 2020, arXiv:2012.12620); Li et al. (EarnHFT, arXiv:2309.12891)
+        h1_atr_safe = max(h1_atr, 0.1)
+        m5_atr_safe = max(m5_atr, 0.1)
+        m1_atr_safe = max(m1_atr, 0.1)
+
+        z_h1 = (last_h1_close - h1_ema) / h1_atr_safe
+        z_m5 = (last_m5_close - m5_ema) / m5_atr_safe
+        z_m1 = (current_m1_close - m1_ema) / m1_atr_safe
+        self.last_z_scores = {"h1": z_h1, "m5": z_m5, "m1": z_m1}
+
+        # Robust regime classification using Z-score boundaries (filters micro-chop)
+        NOISE_EPSILON = 0.05
+        if z_h1 > NOISE_EPSILON:
+            h1_trend = self.TREND_BULLISH
+        elif z_h1 < -NOISE_EPSILON:
+            h1_trend = self.TREND_BEARISH
+        else:
+            h1_trend = self.TREND_NONE
+
+        if z_m5 > NOISE_EPSILON:
             m5_trend = self.TREND_BULLISH
-        elif last_m5_close < m5_ema:
+        elif z_m5 < -NOISE_EPSILON:
             m5_trend = self.TREND_BEARISH
         else:
             m5_trend = self.TREND_NONE
 
-        # Log status snippet
+        # Calculate alignment conviction score [0.5, 1.8]
+        if h1_trend == m5_trend and h1_trend != self.TREND_NONE:
+            alignment_depth = min(abs(z_h1), abs(z_m5))
+            self.last_conviction = float(max(0.5, min(0.5 + 0.35 * alignment_depth, 1.8)))
+        else:
+            self.last_conviction = 0.5
+
+        # Log status snippet with Z-scores and conviction
         log_msg = (
-            f"M1={current_m1_close:.2f} (EMA={m1_ema:.2f}) | "
-            f"M5={m5_trend} ({last_m5_close:.2f}/EMA={m5_ema:.2f}) | "
-            f"H1={h1_trend} ({last_h1_close:.2f}/EMA={h1_ema:.2f})"
+            f"M1={current_m1_close:.2f} (z={z_m1:+.2f}) | "
+            f"M5={m5_trend} (z={z_m5:+.2f}) | "
+            f"H1={h1_trend} (z={z_h1:+.2f}) | Conviction={self.last_conviction:.2f}x"
         )
 
         # Signal logic matching original flow with M5 structure check added

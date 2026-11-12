@@ -1,4 +1,6 @@
-// src/components/StatCards.jsx
+// src/components/StatCards.jsx — Precision Instrument KPI Cards
+import React from 'react';
+
 function StatCard({ label, value, sub, colorClass = 'neutral' }) {
   return (
     <div className="card">
@@ -16,35 +18,35 @@ export default function StatCards({ stats }) {
   const total    = stats.total_pnl ?? 0;
   const winRate  = stats.win_rate  ?? 0;
   const streak   = stats.win_streak > 0
-    ? `🔥 W${stats.win_streak}`
+    ? `+${stats.win_streak} wins`
     : stats.loss_streak > 0
-    ? `❄️ L${stats.loss_streak}`
-    : '—';
+    ? `-${stats.loss_streak} losses`
+    : 'None';
 
   return (
     <div className="grid-4">
       <StatCard
-        label="Today PnL"
+        label="Today P&L"
         value={`$${pnl.toFixed(2)}`}
         sub={`${stats.today_trades ?? 0} trades today`}
         colorClass={pnl > 0 ? 'positive' : pnl < 0 ? 'negative' : 'neutral'}
       />
       <StatCard
-        label="Total PnL"
+        label="Total P&L"
         value={`$${total.toFixed(2)}`}
-        sub={`${stats.total_trades ?? 0} all-time trades`}
+        sub={`${stats.total_trades ?? 0} total trades`}
         colorClass={total > 0 ? 'positive' : total < 0 ? 'negative' : 'neutral'}
       />
       <StatCard
-        label="Win Rate"
-        value={`${winRate}%`}
-        sub={`${stats.wins ?? 0}W / ${stats.losses ?? 0}L`}
+        label="Win rate"
+        value={`${winRate.toFixed(1)}%`}
+        sub={`${stats.wins ?? 0}W · ${stats.losses ?? 0}L`}
         colorClass={winRate >= 50 ? 'positive' : 'negative'}
       />
       <StatCard
-        label="Streak"
+        label="Current streak"
         value={streak}
-        sub={`Best W: ${stats.max_win_streak ?? 0}  |  Max L: ${stats.max_loss_streak ?? 0}`}
+        sub={`Max: +${stats.max_win_streak ?? 0}W · -${stats.max_loss_streak ?? 0}L`}
       />
     </div>
   );

@@ -1,5 +1,5 @@
-// src/components/EquityChart.jsx
-// Real-time equity curve — reads from WebSocket data (instant updates)
+// src/components/EquityChart.jsx — High-Craft Capital Trajectory Canvas
+import React from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
@@ -10,17 +10,21 @@ function CustomTooltip({ active, payload, label }) {
   const d = payload[0].payload;
   return (
     <div style={{
-      background: 'var(--bg-card2)', border: '1px solid var(--border)',
-      borderRadius: 8, padding: '10px 14px', fontSize: 12,
+      backgroundColor: 'var(--bg-card)',
+      border: '1px solid var(--border)',
+      borderRadius: 'var(--radius-sm)',
+      padding: '8px 12px',
+      fontSize: 11,
+      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.5)'
     }}>
-      <div style={{ color: 'var(--text-2)', marginBottom: 4 }}>
-        {d.time ? new Date(d.time).toLocaleString() : label}
+      <div style={{ color: 'var(--text-3)', marginBottom: 4 }}>
+        {d.time ? new Date(d.time).toLocaleTimeString() : label}
       </div>
-      <div style={{ color: d.equity >= 0 ? 'var(--green)' : 'var(--red)', fontWeight: 600 }}>
+      <div style={{ color: d.equity >= 0 ? 'var(--green)' : 'var(--red)', fontWeight: 500 }} className="mono">
         Equity: ${d.equity?.toFixed(2)}
       </div>
-      <div style={{ color: 'var(--text-2)' }}>
-        Trade PnL: {d.pnl >= 0 ? '+' : ''}${d.pnl?.toFixed(2)}
+      <div style={{ color: 'var(--text-2)' }} className="mono">
+        Trade: {d.pnl >= 0 ? '+' : ''}${d.pnl?.toFixed(2)}
       </div>
     </div>
   );
@@ -29,12 +33,13 @@ function CustomTooltip({ active, payload, label }) {
 export default function EquityChart({ equityData, loading = false }) {
   const points = equityData?.points ?? [];
   const isUp   = (equityData?.total_pnl ?? 0) >= 0;
+  const strokeColor = isUp ? 'var(--green)' : 'var(--red)';
 
   return (
     <div className="card">
-      <div className="section-header" style={{ marginBottom: 16 }}>
-        <div className="section-title">Equity Curve</div>
-        <span className={isUp ? 'positive' : 'negative'} style={{ fontWeight: 700 }}>
+      <div className="section-header">
+        <div className="section-title">Equity curve</div>
+        <span className={`mono ${isUp ? 'positive' : 'negative'}`} style={{ fontWeight: 500, fontSize: 13 }}>
           {isUp ? '+' : ''}${(equityData?.total_pnl ?? 0).toFixed(2)}
         </span>
       </div>
@@ -42,33 +47,37 @@ export default function EquityChart({ equityData, loading = false }) {
       {loading ? (
         <div className="spinner"><span className="spin">⟳</span></div>
       ) : points.length === 0 ? (
-        <div className="spinner" style={{ height: 180, color: 'var(--text-3)' }}>
-          No completed trades yet
+        <div className="spinner" style={{ height: 220, color: 'var(--text-3)' }}>
+          No completed trades recorded yet
         </div>
       ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          <AreaChart data={points} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+        <ResponsiveContainer width="100%" height={260}>
+          <AreaChart data={points} margin={{ top: 8, right: 4, bottom: 0, left: 0 }}>
             <defs>
-              <linearGradient id="eq" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={isUp ? '#10b981' : '#ef4444'} stopOpacity={0.3} />
-                <stop offset="95%" stopColor={isUp ? '#10b981' : '#ef4444'} stopOpacity={0} />
+              <linearGradient id="eqFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor={strokeColor} stopOpacity={0.15} />
+                <stop offset="100%" stopColor={strokeColor} stopOpacity={0.0} />
               </linearGradient>
             </defs>
-            <CartesianGrid stroke="rgba(255,255,255,0.04)" vertical={false} />
+            <CartesianGrid stroke="rgba(238, 240, 245, 0.04)" vertical={false} />
             <XAxis dataKey="time" hide />
             <YAxis
-              tick={{ fontSize: 11, fill: 'var(--text-2)' }}
-              tickLine={false} axisLine={false}
+              tick={{ fontSize: 11, fill: 'var(--text-3)', fontFamily: 'JetBrains Mono, monospace' }}
+              tickLine={false}
+              axisLine={false}
               tickFormatter={v => `$${v}`}
-              width={60}
+              width={64}
             />
             <Tooltip content={<CustomTooltip />} />
-            <ReferenceLine y={0} stroke="rgba(255,255,255,0.15)" strokeDasharray="4 4" />
+            <ReferenceLine y={0} stroke="rgba(238, 240, 245, 0.1)" strokeDasharray="3 3" />
             <Area
-              type="monotone" dataKey="equity"
-              stroke={isUp ? '#10b981' : '#ef4444'}
-              strokeWidth={2} fill="url(#eq)"
-              dot={false} activeDot={{ r: 4 }}
+              type="monotone"
+              dataKey="equity"
+              stroke={strokeColor}
+              strokeWidth={1.5}
+              fill="url(#eqFill)"
+              dot={false}
+              activeDot={{ r: 3, fill: strokeColor, stroke: 'var(--bg-card)', strokeWidth: 1 }}
             />
           </AreaChart>
         </ResponsiveContainer>

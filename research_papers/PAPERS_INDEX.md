@@ -1,0 +1,22 @@
+# Nur Trading Bot - Core Academic Research Papers
+
+This directory contains foundational, peer-reviewed, and state-of-the-art research papers directly underpinning the architecture and algorithms of **Nur Trading Bot**.
+
+### Topics Covered:
+- **Proximal Policy Optimization (PPO)** for algorithmic execution
+- **Hierarchical Multi-Agent Reinforcement Learning (MARL)** (Meta-controller regime router + specialized sub-agents)
+- **Gaussian Hidden Markov Models (HMM)** for market regime classification (Trending vs. Ranging) using Baum-Welch & Viterbi
+- **High-Frequency & Intraday Quantitative Trading** (M1 timeframe, volatility-scaled rewards, slippage & latency)
+
+| # | Paper Title | Topic / Component | Authors / Year | File |
+|---|---|---|---|---|
+| 1 | **Proximal Policy Optimization Algorithms**<br>*The core RL policy algorithm implemented in Nur-main (rl/train.py, rl/agent.py, Stable-Baselines3 PPO).* | 1707.06347 | John Schulman, Filip Wolski, Prafulla Dhariwal, Alec Radford, Oleg Klimov (2017) | [`01_PPO_Proximal_Policy_Optimization_Algorithms.pdf`](01_PPO_Proximal_Policy_Optimization_Algorithms.pdf) |
+| 2 | **Deep Stock Trading: A Hierarchical Reinforcement Learning Framework for Portfolio Optimization and Order Execution**<br>*Direct theoretical basis for Nur-main's multi-agent hierarchy (Meta-controller regime router + low-level execution agents).* | 2012.12620 | Rundong Wang, Hongxin Wei, Bo An, et al. (2020) | [`02_Hierarchical_RL_for_Trading_and_Execution.pdf`](02_Hierarchical_RL_for_Trading_and_Execution.pdf) |
+| 3 | **EarnHFT: Efficient Hierarchical Reinforcement Learning for High Frequency Trading**<br>*High-frequency & intraday execution (M1 level execution, time decay penalties, order timing).* | 2309.12891 | Haohang Li, Siyu Gao, et al. (2023) | [`03_EarnHFT_Hierarchical_RL_for_High_Frequency_Trading.pdf`](03_EarnHFT_Hierarchical_RL_for_High_Frequency_Trading.pdf) |
+| 4 | **FinRL: A Deep Reinforcement Learning Library for Automated Stock Trading**<br>*Standardized benchmark and trading environment structure (Gymnasium observation/action mapping in finance).* | 2011.09607 | Xiao-Yang Liu, Hongyang Yang, Jiechao Gao, Christina Dan Wang (2020) | [`04_FinRL_Deep_Reinforcement_Learning_Library.pdf`](04_FinRL_Deep_Reinforcement_Learning_Library.pdf) |
+| 5 | **Reinforcement Learning Applied to Trading Systems: A Survey**<br>*Comprehensive state-of-the-art survey covering state space design (RSI, MACD, EMA), reward shaping, and position sizing.* | 2212.06064 | Felizardo, et al. (2022) | [`05_RL_Applied_to_Trading_Systems_Survey.pdf`](05_RL_Applied_to_Trading_Systems_Survey.pdf) |
+| 6 | **Deep Reinforcement Learning in Quantitative Algorithmic Trading: A Review**<br>*Review of practical challenges, out-of-sample testing, overfitting risks, and trade evaluation metrics in quantitative execution.* | 2106.00123 | Mihai-Valentin Pricope (2021) | [`06_Deep_RL_in_Quantitative_Algorithmic_Trading_Review.pdf`](06_Deep_RL_in_Quantitative_Algorithmic_Trading_Review.pdf) |
+| 7 | **Deep Reinforcement Learning for Trading**<br>*Volatility-scaled reward functions, stop-loss mechanisms, and transaction cost/slippage penalization.* | 1911.10107 | Zihao Zhang, Stefan Zohren, Stephen Roberts (Oxford-Man Institute of Quantitative Finance) (2019) | [`07_Deep_RL_for_Trading_Oxford.pdf`](07_Deep_RL_for_Trading_Oxford.pdf) |
+| 8 | **Stock Market Trend Analysis Using Hidden Markov Model and Long Short Term Memory**<br>*Gaussian HMM for regime detection (trending vs ranging) combined with sequential price models, matching rl/hmm_classifier.py.* | 2104.09700 | Qin, et al. (2021) | [`08_HMM_and_LSTM_Stock_Market_Trend_Analysis.pdf`](08_HMM_and_LSTM_Stock_Market_Trend_Analysis.pdf) |
+| 9 | **Hidden Markov Models for Stock Market Prediction**<br>*Expectation-Maximization (Baum-Welch) and Viterbi state decoding on financial market regimes.* | 2310.03775 | Singh, et al. (2023) | [`09_Hidden_Markov_Models_Stock_Prediction.pdf`](09_Hidden_Markov_Models_Stock_Prediction.pdf) |
+| 10 | **A Deep Reinforcement Learning Framework for the Financial Portfolio Management Problem**<br>*Foundational architectural blueprint for financial time-series DRL pipelines and continuous policy optimization.* | 1706.10059 | Zhengyao Jiang, Dixing Xu, Jinjun Liang (2017) | [`10_Deep_RL_Framework_Financial_Portfolio_Management.pdf`](10_Deep_RL_Framework_Financial_Portfolio_Management.pdf) |

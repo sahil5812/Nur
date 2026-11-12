@@ -1,0 +1,49 @@
+{
+  "total_samples": 42855,
+  "baseline_win_rate": 0.4282,
+  "filtered_win_rate": 0.4358,
+  "win_rate_lift_pct": 0.76,
+  "cv_accuracy": 0.5149,
+  "selected_features": [
+    "z_h1",
+    "z_m5",
+    "z_m1",
+    "rsi",
+    "rsi_slope_5",
+    "macd_hist",
+    "atr_normalized",
+    "realized_vol_20",
+    "spread_ratio",
+    "hour_sin",
+    "hour_cos",
+    "z_alignment"
+  ],
+  "pruned_features": [
+    "gamma_trend",
+    "session_london",
+    "session_asian",
+    "gamma_range",
+    "session_ny"
+  ],
+  "feature_importances": {
+    "z_h1": 0.1815,
+    "z_m5": 0.1384,
+    "z_m1": 0.1076,
+    "rsi": 0.0493,
+    "rsi_slope_5": 0.0533,
+    "macd_hist": 0.097,
+    "atr_normalized": 0.0573,
+    "realized_vol_20": 0.0973,
+    "spread_ratio": 0.0566,
+    "hour_sin": 0.0294,
+    "hour_cos": 0.0452,
+    "z_alignment": 0.0871
+  },
+  "hyperparameters": {
+    "max_depth": 8,
+    "min_samples_leaf": 30,
+    "ccp_alpha": 0.0,
+    "n_estimators": 100
+  },
+  "min_threshold": 0.42
+}

@@ -1,25 +1,23 @@
 import time
-import math
-import numpy as np
 import MetaTrader5 as mt5
-from datetime import datetime, timezone
-from core.guardian import RiskGuardian
+from datetime import datetime
 from core.models import StrategyConfig, RiskConfig
 from core.state import StateMachine
 from core.risk import RiskManager
 from core.strategy import PullbackStrategy
 from core.execution import Broker
+from core.guardian import RiskGuardian
+from rl.agent import RLAgent
+try:
+    from intelligence.rf_filter import RandomForestMetaFilter
+except ImportError:
+    RandomForestMetaFilter = None
 from data.storage import Storage
 from data.data_provider import DataProvider
 from utils.logger import logger
 from utils.helpers import format_duration
 from utils.status_writer import write_status
 import shared_state
-from intelligence.news_filter import is_news_window
-from rl.agent import RLAgent
-from rl.trading_env import _get_session
-from indicators.rsi import calculate_rsi
-from indicators.macd import calculate_macd
 
 def load_pending_commands() -> list[dict]:
     from database.db import _raw_conn
@@ -69,78 +67,88 @@ class TradingEngine:
         # 1. Configs
         self.strat_config = StrategyConfig()
         self.risk_config = RiskConfig()
-
+        
         # 2. Components
         self.storage = Storage()
         self.data_provider = DataProvider()
-        self.broker = Broker(self.storage, self.strat_config)
+        self.broker = Broker(self.storage)
         self.risk_manager = RiskManager(self.risk_config, self.storage)
         self.strategy = PullbackStrategy(self.strat_config)
         self.state_machine = StateMachine(self.strat_config.cooldown_seconds)
-        self.rl_agent = RLAgent()  # RL agent for MARL confirmation
+        self.rl_agent = RLAgent()
         self.guardian = RiskGuardian(self.risk_config, self.storage, self.broker, self.strat_config.symbol)
-
+        
+        # 2b. Random Forest Meta-Filter (Pruning & Meta-Labeling)
+        if RandomForestMetaFilter is not None:
+            try:
+                self.rf_filter = RandomForestMetaFilter()
+                self.rf_filter.load()
+            except Exception as exc:
+                logger.warning(f"Could not load Random Forest filter: {exc}")
+                self.rf_filter = None
+        else:
+            self.rf_filter = None
+        
         # 3. Share instances with Telegram thread via shared_state
         shared_state.broker = self.broker
         shared_state.storage = self.storage
         shared_state.engine_state = self.state_machine.current_state
-
+        
         # 4. Loop State
         self.active_ticket = None
         self.last_m1_time = None
         self.pullback_seen = False
 
-    def _build_rl_state_dict(self, m1_rates, signal):
-        """
-        Builds RL state dict with real computed indicators from raw Bar objects.
-        Must match the exact normalization used in rl/trading_env.py::_get_obs().
-        """
+    def _build_rl_state_dict(self, m1_rates, signal=None) -> dict:
+        import math
+        import numpy as np
+        from datetime import timezone
         closes = [b.close for b in m1_rates]
-
-        # Compute indicators from raw bars
-        ema = self.strategy.calculate_ema(
-            closes[-self.strat_config.ema_period:], self.strat_config.ema_period
-        )
+        current_close = closes[-1]
+        ema = self.strategy.calculate_ema(closes[-self.strat_config.ema_period:], self.strat_config.ema_period)
         atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
-        rsi = calculate_rsi(closes, period=14)
-        _, _, macd_hist = calculate_macd(closes)
+        
+        rsi = 50.0
+        if len(closes) >= 15:
+            diffs = np.diff(closes[-15:])
+            gains = np.maximum(diffs, 0)
+            losses = np.maximum(-diffs, 0)
+            avg_gain = float(np.mean(gains))
+            avg_loss = float(np.mean(losses))
+            if avg_loss > 0:
+                rs = avg_gain / avg_loss
+                rsi = float(100.0 - (100.0 / (1.0 + rs)))
+            else:
+                rsi = 100.0 if avg_gain > 0 else 50.0
 
-        # EMA distance (matches env: (close - ema) / max(ema, 1.0) * 100)
-        close = closes[-1]
-        ema_distance_pct = (close - ema) / max(ema, 1.0) * 100.0
-
-        # ATR z-score normalization (matches env)
-        # Use simple clip since we don't have running stats; agent.py clips to [-1,1]
-        atr_mean = atr  # single-point approximation; agent clips anyway
-        atr_normalized = 0.0  # neutral default; the agent clips to [-1, 1]
-
-        # Log return for HMM router
-        if len(closes) >= 2 and closes[-2] > 0:
-            log_ret = math.log(closes[-1] / closes[-2])
-        else:
-            log_ret = 0.0
-
-        # Session from current UTC hour (0=Asian, 1=London, 2=NY, 3=Off)
         hour = datetime.now(timezone.utc).hour
-        session = _get_session(hour)
-
-        # Position: 0=flat (we're evaluating entry), 1=long, 2=short
-        position = 0  # always flat when deciding to enter
-
-        # Candle time for HMM deduplication
-        candle_time = m1_rates[-1].time
+        z_dict = getattr(self.strategy, "last_z_scores", {})
+        zh1_val = float(z_dict.get("h1", 0.0))
+        zm5_val = float(z_dict.get("m5", 0.0))
+        zm1_val = float(z_dict.get("m1", 0.0))
 
         return {
-            'rsi': rsi,
-            'macd_hist': macd_hist,
-            'atr': atr,
-            'ema_distance_pct': ema_distance_pct,
-            'atr_normalized': atr_normalized,
-            'hour': hour,
-            'session': session,
-            'position': position,
-            'log_ret': log_ret,
-            'candle_time': candle_time,
+            "rsi": rsi,
+            "rsi_slope_5": 0.0,
+            "macd_hist": 0.0,
+            "atr": atr,
+            "ema_distance_pct": (current_close - ema) / max(ema, 1.0) * 100.0,
+            "atr_normalized": (atr - 1.5) / 1.0,
+            "z_h1": zh1_val,
+            "z_m5": zm5_val,
+            "z_m1": zm1_val,
+            "z_alignment": min(abs(zh1_val), abs(zm5_val)),
+            "hour": hour,
+            "hour_sin": math.sin(2 * math.pi * hour / 24.0),
+            "hour_cos": math.cos(2 * math.pi * hour / 24.0),
+            "session": 1 if 7 <= hour < 12 else (2 if 12 <= hour < 21 else 0),
+            "session_london": 1.0 if 7 <= hour < 16 else 0.0,
+            "session_ny": 1.0 if 12 <= hour < 21 else 0.0,
+            "session_asian": 1.0 if 0 <= hour < 8 else 0.0,
+            "spread_ratio": 0.2,
+            "position": 0,
+            "log_ret": math.log(closes[-1] / closes[-2]) if len(closes) >= 2 else 0.0,
+            "candle_time": m1_rates[-1].time,
         }
 
     def run(self):
@@ -193,36 +201,29 @@ class TradingEngine:
                                         mt5.TIMEFRAME_M1,
                                         self.strat_config.ema_period + self.strat_config.atr_period + 3
                                     )
-
+                                    
                                     if tick and acc and m1_rates:
                                         m1_atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
                                         price = tick.ask if command == "BUY" else tick.bid
-                                        sl_dist = max(m1_atr * self.strat_config.sl_atr_multiplier, self.strat_config.min_sl_dist)
+                                        sl_dist = m1_atr * self.strat_config.sl_atr_multiplier
                                         
                                         user_info = get_user_risk_info(user_id)
                                         risk_mult = user_info["risk_multiplier"]
                                         user_name = user_info["name"]
                                         
                                         # Calculate lot size with risk multiplier
-                                        volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier, self.strat_config.min_sl_dist)
+                                        volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier)
                                         volume = round(max(volume * risk_mult, 0.01), 2)
-
+                                        
                                         order_type = mt5.ORDER_TYPE_BUY if command == "BUY" else mt5.ORDER_TYPE_SELL
-
-                                        # ---------- Risk check for manual orders ----------
-                                        if not self.risk_manager.check_margin(self.strat_config.symbol, order_type, volume, price):
-                                            logger.warning(f"⚠️  Manual {command} rejected: insufficient margin.")
-                                            update_command_status(cmd_id, "FAILED")
-                                            continue
-
+                                        
                                         ticket = self.broker.send_order(
                                             self.strat_config.symbol,
                                             order_type,
                                             volume,
                                             sl_dist,
                                             comment=f"NUR SaaS {user_id}",
-                                            magic=999999,
-                                            atr=m1_atr
+                                            magic=999999
                                         )
                                         if ticket:
                                             self.active_ticket = ticket
@@ -326,14 +327,6 @@ class TradingEngine:
                         time.sleep(0.5)
                         continue
 
-                    # 🔒 RiskGuardian hard circuit breaker check
-                    guardian_result = self.guardian.check_and_apply()
-                    if guardian_result.tripped:
-                        self.state_machine.set_waiting()
-                        self.pullback_seen = False
-                        time.sleep(0.5)
-                        continue
-
                     current_state = self.state_machine.current_state
 
                     # --- FETCH DATA ---
@@ -388,82 +381,77 @@ class TradingEngine:
                         if self.last_m1_time == last_closed_bar.time:
                             time.sleep(0.2)
                             continue
-
+                        
                         self.last_m1_time = last_closed_bar.time
 
                         # Check Session filters and Account Risk Daily limits
                         if not self.risk_manager.is_in_trading_session():
                             time.sleep(0.2)
                             continue
-
+                            
                         if not self.risk_manager.check_daily_limits():
                             time.sleep(0.2)
                             continue
-
-                        # Hard news blackout gate
-                        if self.risk_config.news_filter_enabled:
-                            in_news_window, news_event = is_news_window(
-                                buffer_minutes=self.risk_config.news_buffer_minutes
-                            )
-                            if in_news_window:
-                                logger.warning(f"🚨 News blackout active: {news_event}")
-                                if shared_state.send_message:
-                                    shared_state.send_message(f"🚨 News blackout active: {news_event}")
-                                time.sleep(0.2)
-                                continue
 
                         # Check strategy signals
                         signal, self.pullback_seen, log_msg = self.strategy.check_signals(
                             m1_rates, m5_rates, h1_rates, self.pullback_seen
                         )
-
+                        
                         # Periodic logging of system status
                         logger.info(log_msg)
 
                         if signal is not None:
-                            # RL confirmation veto
-                            if self.risk_config.rl_veto_enabled:
-                                state_dict = self._build_rl_state_dict(m1_rates, signal)
-                                rl_action = self.rl_agent.predict(state_dict)
-                                rl_action_map = {"BUY": mt5.ORDER_TYPE_BUY, "SELL": mt5.ORDER_TYPE_SELL, "HOLD": None}
-                                rl_order_type = rl_action_map.get(rl_action)
-
-                                if rl_order_type != signal:
-                                    logger.warning(f"⚠️ RL veto: strategy={signal}, rl_action={rl_action}")
-                                    time.sleep(0.2)
-                                    continue
-
                             # Fetch latest tick and account info
                             tick = self.data_provider.get_tick(self.strat_config.symbol, force_refresh=True)
                             acc = mt5.account_info()
-
+                            
                             if tick and acc:
                                 price = tick.ask if signal == mt5.ORDER_TYPE_BUY else tick.bid
                                 m1_atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
+                                
+                                # ── Random Forest Meta-Filter Evaluation ──
+                                rf_prob = 0.50
+                                if getattr(self, "rf_filter", None) is not None and self.rf_filter.is_fitted:
+                                    dir_str = "BUY" if signal == mt5.ORDER_TYPE_BUY else "SELL"
+                                    state_dict = self._build_rl_state_dict(m1_rates, signal=signal)
+                                    spread = (tick.ask - tick.bid) if tick else 0.4
+                                    state_dict["spread_ratio"] = spread / max(m1_atr, 0.1)
+                                    rf_ok, rf_prob, rf_reason = self.rf_filter.evaluate_trade(dir_str, state_dict)
+                                    if not rf_ok:
+                                        logger.warning(f"✋ {rf_reason} — Trade execution cancelled")
+                                        time.sleep(0.5)
+                                        continue
+                                    logger.info(f"🌲 {rf_reason}")
 
-                                # Dynamic Lot size
-                                volume = self.risk_manager.calculate_lot_size(acc.balance, m1_atr, self.strat_config.sl_atr_multiplier, self.strat_config.min_sl_dist)
-                                # Apply user risk multiplier for consistency
-                                user_info = get_user_risk_info(self.storage.current_user_id)
-                                risk_mult = user_info["risk_multiplier"]
-                                volume = round(max(volume * risk_mult, 0.01), 2)
+                                final_conviction = max(
+                                    getattr(self.strategy, "last_conviction", 1.0),
+                                    float(rf_prob * 1.5)
+                                )
 
+                                # Dynamic Lot size scaled by MTF alignment & RF conviction
+                                volume = self.risk_manager.calculate_lot_size(
+                                    acc.balance,
+                                    m1_atr,
+                                    self.strat_config.sl_atr_multiplier,
+                                    conviction=final_conviction
+                                )
+                                
                                 # Margin check validation
                                 if self.risk_manager.check_margin(self.strat_config.symbol, signal, volume, price):
-                                    sl_dist = max(m1_atr * self.strat_config.sl_atr_multiplier, self.strat_config.min_sl_dist)
+                                    sl_dist = m1_atr * self.strat_config.sl_atr_multiplier
                                     ticket = self.broker.send_order(
                                         self.strat_config.symbol,
                                         signal,
                                         volume,
-                                        sl_dist,
-                                        atr=m1_atr
+                                        sl_dist
                                     )
                                     if ticket:
                                         self.active_ticket = ticket
                                         self.state_machine.set_in_trade()
                                         shared_state.engine_state = self.state_machine.current_state
                                         self.pullback_seen = False
-
+                                        
                                         # Send Telegram alerts
                                         t_type = "BUY" if signal == mt5.ORDER_TYPE_BUY else "SELL"
                                         if shared_state.send_message:
@@ -522,7 +510,7 @@ class TradingEngine:
                             m1_atr = self.strategy.calculate_atr(m1_rates, self.strat_config.atr_period)
                             
                             if tick and m1_atr > 0:
-                                trail_distance = max(m1_atr * self.strat_config.trail_atr_multiplier, self.strat_config.min_sl_dist)
+                                trail_distance = m1_atr * self.strat_config.trail_atr_multiplier
                                 
                                 if active_pos.type == mt5.ORDER_TYPE_BUY:
                                     new_sl = tick.bid - trail_distance

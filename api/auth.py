@@ -4,6 +4,13 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field
 import jwt
+import warnings
+# Silence pyjwt HMAC length warning for legacy tokens
+try:
+    from jwt.exceptions import InsecureKeyLengthWarning
+    warnings.filterwarnings("ignore", category=InsecureKeyLengthWarning)
+except ImportError:
+    pass
 from datetime import datetime, timedelta
 import os
 import sys
@@ -20,8 +27,30 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from database.db import get_user_by_email, create_user, verify_password, update_last_login
 
-SECRET_KEY = os.getenv("JWT_SECRET", "nur-secret-key-change-this")
+SECRET_KEY = os.getenv("JWT_SECRET", "nur-trading-bot-super-secure-jwt-secret-key-256bit")
 ALGORITHM = "HS256"
+
+LEGACY_SECRET_KEYS = [
+    "nur-jwt-secret-2024-abusahil",
+    "nur-secret-key-change-this",
+]
+
+def decode_token(token: str) -> dict:
+    """Decode JWT token using current SECRET_KEY, falling back to legacy keys for seamless migrations."""
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+    except jwt.InvalidSignatureError:
+        pass
+    except Exception:
+        raise
+
+    for old_k in LEGACY_SECRET_KEYS:
+        try:
+            return jwt.decode(token, old_k, algorithms=[ALGORITHM])
+        except Exception:
+            pass
+
+    return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
 GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
@@ -361,7 +390,7 @@ security = HTTPBearer()
 def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)) -> dict:
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = decode_token(token)
         email: str = payload.get("sub")
         user_id: int = payload.get("id")
         if email is None or user_id is None:

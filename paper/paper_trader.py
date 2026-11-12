@@ -43,6 +43,36 @@ class PaperTrader:
         self._positions: list[SimpleNamespace] = []
         self._next_ticket: int = 10000
         self._closed_this_tick: list[SimpleNamespace] = []
+
+        # Load any existing persisted paper positions from disk so restarts don't lose trades
+        import json
+        from pathlib import Path
+        try:
+            path = Path("logs/paper_positions.json")
+            if path.exists():
+                raw = json.loads(path.read_text(encoding="utf-8"))
+                if isinstance(raw, list) and len(raw) > 0:
+                    for d in raw:
+                        pos = SimpleNamespace(
+                            ticket=d.get("ticket", 10000),
+                            type=d.get("type", 1),
+                            symbol=d.get("symbol", "XAUUSD"),
+                            volume=d.get("volume", 0.01),
+                            price_open=d.get("price_open", 0.0),
+                            price_current=d.get("price_current", 0.0),
+                            profit=d.get("profit", 0.0),
+                            sl=d.get("sl", 0.0),
+                            tp=d.get("tp", 0.0),
+                            score=d.get("score", 0),
+                            entry_time=d.get("entry_time", datetime.now().isoformat()),
+                            magic=d.get("magic", 123456)
+                        )
+                        self._positions.append(pos)
+                    self._next_ticket = max([p.ticket for p in self._positions], default=9999) + 1
+                    logger.info(f"📝 Restored {len(self._positions)} active paper positions from disk")
+        except Exception as exc:
+            logger.warning(f"Could not restore paper positions: {exc}")
+
         logger.info("📝 PaperTrader initialized — PAPER TRADING MODE ACTIVE")
         self._save_state()
 

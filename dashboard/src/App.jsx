@@ -1,4 +1,4 @@
-// src/App.jsx — Main App with Routing
+// src/App.jsx — Institutional Trading Terminal with Routing
 import './index.css';
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
@@ -6,15 +6,12 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import AuthCallback from './pages/AuthCallback';
-import { useLiveData }  from './hooks/useLiveData';
-import Header           from './components/Header';
-import StatCards        from './components/StatCards';
-import EquityChart      from './components/EquityChart';
-import EnginePanel      from './components/EnginePanel';
-import TradeHistory     from './components/TradeHistory';
-import Analytics        from './components/Analytics';
-import SaaSManager      from './components/SaaSManager';
-import ForceTradeModal  from './components/ForceTradeModal';
+import { useLiveData } from './hooks/useLiveData';
+import Header from './components/Header';
+import MarketRibbon from './components/MarketRibbon';
+import MainChartPanel from './components/MainChartPanel';
+import AIExecutionDesk from './components/AIExecutionDesk';
+import TerminalDock from './components/TerminalDock';
 import { getActiveAccount, getSavedAccounts, switchAccount, removeAccount, addNewAccount, autoRefreshToken } from './utils/auth';
 import { getApiBase } from './config';
 
@@ -66,7 +63,7 @@ function DashboardView() {
       setToken(newToken);
       setAccounts(getSavedAccounts());
       setSwitcherOpen(false);
-      setToastMessage(`✓ Switched to ${active?.display_name}`);
+      setToastMessage(`Switched to ${active?.display_name}`);
       setTimeout(() => setToastMessage(''), 4000);
     }
   };
@@ -107,6 +104,7 @@ function DashboardView() {
 
   return (
     <div className="layout">
+      {/* ── Top Header ── */}
       <Header 
         connected={connected} 
         engine={engine} 
@@ -121,36 +119,48 @@ function DashboardView() {
         onSignOutAll={handleSignOutAll}
       />
 
-      <main className="main-content">
-        {/* ── Row 1: KPI Cards ─────────────────────── */}
-        <StatCards stats={stats} />
+      {/* ── Institutional Ticker Ribbon ── */}
+      <MarketRibbon stats={stats} engine={engine} connected={connected} />
 
-        {/* ── Row 2: Equity + Engine Status ────────── */}
-        <div className="grid-2">
-          <EquityChart equityData={data?.equity} loading={!data} />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <EnginePanel engine={engine} stats={stats} />
-            <SaaSManager token={token} />
-            <ForceTradeModal token={token} />
+      {/* ── Main Terminal Workspace ── */}
+      <main className="main-content">
+        <div className="terminal-workspace">
+          {/* ── Left Column: Live Chart + Dock ── */}
+          <div className="terminal-left-column">
+            <MainChartPanel 
+              engine={engine} 
+              equityData={data?.equity} 
+              marketChart={data?.chart} 
+              loading={!data} 
+            />
+            <TerminalDock 
+              trades={data?.trades ?? []} 
+              analyticsData={data?.analytics} 
+              engine={engine} 
+              loading={!data} 
+            />
+          </div>
+
+          {/* ── Right Column: AI Execution Desk ── */}
+          <div className="terminal-right-column">
+            <AIExecutionDesk 
+              token={token} 
+              engine={engine} 
+              stats={stats} 
+            />
           </div>
         </div>
 
-        {/* ── Row 3: Trade History ──────────────────── */}
-        <TradeHistory trades={data?.trades ?? []} total={stats?.total_trades ?? 0} loading={!data} />
-
-        {/* ── Row 4: Analytics ─────────────────────── */}
-        <Analytics analyticsData={data?.analytics} loading={!data} />
-
-        {/* ── Footer ───────────────────────────────── */}
-        <div style={{ textAlign: 'center', color: 'var(--text-3)', fontSize: 11, padding: '8px 0' }}>
-          Nur Trading Bot · Dashboard v3.0 ·{' '}
+        {/* ── Footer ── */}
+        <div className="terminal-footer">
+          Nur Institutional Terminal · Precision Algorithmic Engine ·{' '}
           {connected
-            ? <span style={{ color: 'var(--green)' }}>Live ●</span>
-            : <span style={{ color: 'var(--red)' }}>Offline ●</span>}
+            ? <span style={{ color: 'var(--green)' }}>Live Gateway</span>
+            : <span style={{ color: 'var(--red)' }}>Offline Gateway</span>}
         </div>
       </main>
 
-      {/* ─── TOAST NOTIFICATIONS ─── */}
+      {/* ── Toast Feedback ── */}
       {toastMessage && (
         <div className="toast-notification info">
           <span>{toastMessage}</span>
@@ -177,7 +187,6 @@ export default function App() {
               </PrivateRoute>
             } 
           />
-          {/* Fallback redirect */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AuthProvider>

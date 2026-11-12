@@ -11,8 +11,9 @@ export function useLiveData(token) {
   const { kickToLogin } = useAuth();
 
   useEffect(() => {
+    const activeToken = token || localStorage.getItem('token');
     // Don't connect without a token — avoids 4003 storms
-    if (!token) return;
+    if (!activeToken) return;
 
     let ws = null;
     let timeoutId = null;
@@ -22,7 +23,7 @@ export function useLiveData(token) {
       if (!isMounted) return;
       
       const wsBase = getWsBase();
-      const url = wsBase + `?token=${encodeURIComponent(token)}`;
+      const url = wsBase + `?token=${encodeURIComponent(activeToken)}`;
       ws = new WebSocket(url);
       wsRef.current = ws;
 
