@@ -7,10 +7,11 @@ Implements López de Prado's Meta-Labeling framework for trade filtering:
   - Trades with P(Success) < min_prob (default 0.55) are VETOED to filter noise and chop.
   - High-probability trades boost conviction for dynamic lot sizing.
 
-Dual Pruning Architecture:
+Triple Pruning Architecture:
   1. Feature Pruning:
-     - Collinearity elimination (|r| > threshold pruned).
-     - MDI / Gini Feature Importance pruning (features < 3% importance pruned).
+     - Pairwise collinearity elimination (|r| > threshold pruned).
+     - Multivariate Multicollinearity elimination (Recursive VIF > vif_threshold pruned).
+     - MDI / Gini Feature Importance pruning (features < 2% importance pruned).
   2. Decision Tree Pruning:
      - Constrained max_depth, min_samples_leaf, min_samples_split.
      - Cost-Complexity Pruning (ccp_alpha) to cut weak leaf nodes.
@@ -68,6 +69,7 @@ class RandomForestMetaFilter:
         min_prob_threshold: float = 0.42,
         prune_importance_threshold: float = 0.02,
         collinear_threshold: float = 0.88,
+        vif_threshold: float = 10.0,
         max_depth: int = 8,
         min_samples_leaf: int = 30,
         min_samples_split: int = 60,
@@ -78,6 +80,7 @@ class RandomForestMetaFilter:
         self.min_prob_threshold = min_prob_threshold
         self.prune_importance_threshold = prune_importance_threshold
         self.collinear_threshold = collinear_threshold
+        self.vif_threshold = vif_threshold
         self.max_depth = max_depth
         self.min_samples_leaf = min_samples_leaf
         self.min_samples_split = min_samples_split
@@ -329,6 +332,63 @@ class RandomForestMetaFilter:
         kept_cols = [c for c in cols if c not in pruned_cols]
         return X[kept_cols].copy(), list(pruned_cols)
 
+    def prune_vif_features(
+        self, X: pd.DataFrame, max_vif: Optional[float] = None
+    ) -> Tuple[pd.DataFrame, List[str]]:
+        """
+        Recursively prunes features with Variance Inflation Factor (VIF) > max_vif.
+        Iteratively removes the feature with the highest VIF until all remaining
+        features have VIF <= max_vif or minimum feature limit (5) is reached.
+        """
+        threshold = max_vif if max_vif is not None else self.vif_threshold
+        if threshold is None or threshold <= 1.0:
+            return X.copy(), []
+
+        try:
+            from statsmodels.stats.outliers_influence import variance_inflation_factor
+        except ImportError:
+            logger.warning("statsmodels not installed — skipping VIF pruning")
+            return X.copy(), []
+
+        features = list(X.columns)
+        dropped_vif = []
+        min_features = 5
+
+        # Work on clean, finite numeric data
+        X_work = X[features].dropna().astype(float)
+        # Drop constant columns if any
+        non_constant = [c for c in features if float(X_work[c].std()) > 1e-6]
+        if len(non_constant) < len(features):
+            diff = [c for c in features if c not in non_constant]
+            dropped_vif.extend(diff)
+            features = non_constant
+
+        while len(features) > min_features:
+            vals = X_work[features].values
+            vifs = []
+            for i in range(len(features)):
+                try:
+                    v = float(variance_inflation_factor(vals, i))
+                    if math.isnan(v) or math.isinf(v):
+                        v = 1e9
+                except Exception:
+                    v = 1e9
+                vifs.append(v)
+
+            max_v = max(vifs)
+            if max_v > threshold:
+                worst_idx = int(np.argmax(vifs))
+                worst_col = features[worst_idx]
+                dropped_vif.append(worst_col)
+                logger.info(
+                    f"[PRUNING] VIF: Dropping '{worst_col}' (VIF={max_v:.2f} > {threshold})"
+                )
+                features.pop(worst_idx)
+            else:
+                break
+
+        return X[features].copy(), dropped_vif
+
     def prune_low_importance_features(
         self, X: pd.DataFrame, y: pd.Series
     ) -> Tuple[pd.DataFrame, List[str]]:
@@ -394,19 +454,23 @@ class RandomForestMetaFilter:
         if verbose:
             print(f"  Total setups: {base_samples:,} | Baseline Win Rate: {win_rate_unfiltered:.1%}")
 
-        # Step A: Collinearity Pruning
+        # Step A: Pairwise Collinearity Pruning
         X_uncollinear, collinear_dropped = self.prune_collinear_features(X)
 
-        # Step B: Low-Importance Pruning
-        X_pruned, low_imp_dropped = self.prune_low_importance_features(X_uncollinear, y)
+        # Step B: Recursive VIF (Multicollinearity) Pruning
+        X_vif, vif_dropped = self.prune_vif_features(X_uncollinear)
+
+        # Step C: Low-Importance Pruning
+        X_pruned, low_imp_dropped = self.prune_low_importance_features(X_vif, y)
 
         self.selected_features = list(X_pruned.columns)
-        self.pruned_features_ = collinear_dropped + low_imp_dropped
+        self.pruned_features_ = collinear_dropped + vif_dropped + low_imp_dropped
 
         if verbose:
             print(f"\n[PRUNING SUMMARY]:")
             print(f"  Candidate features: {len(ALL_CANDIDATE_FEATURES)}")
             print(f"  Collinear dropped:  {collinear_dropped}")
+            print(f"  VIF dropped:        {vif_dropped}")
             print(f"  Low-imp dropped:    {low_imp_dropped}")
             print(f"  Active features ({len(self.selected_features)}): {self.selected_features}")
 

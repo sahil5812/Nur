@@ -78,6 +78,34 @@ def test_collinear_pruning():
            ("feat_b" in dropped and "feat_a" in pruned_df.columns)
 
 
+def test_vif_pruning():
+    rf = RandomForestMetaFilter(vif_threshold=5.0)
+    np.random.seed(42)
+    n = 300
+    x1 = np.random.normal(0, 1, n)
+    x2 = np.random.normal(0, 1, n)
+    # Multi-collinear feature: strong linear combination of x1 and x2
+    x_combo = 2.0 * x1 + 3.0 * x2 + np.random.normal(0, 0.01, n)
+    x3 = np.random.normal(10, 2, n)
+    x4 = np.random.normal(-5, 1, n)
+    x5 = np.random.normal(1, 0.5, n)
+    x6 = np.random.normal(2, 1, n)
+
+    df_test = pd.DataFrame({
+        "x1": x1,
+        "x2": x2,
+        "x_combo": x_combo,
+        "x3": x3,
+        "x4": x4,
+        "x5": x5,
+        "x6": x6,
+    })
+    pruned_df, dropped = rf.prune_vif_features(df_test, max_vif=5.0)
+    assert len(dropped) >= 1
+    assert "x_combo" in dropped or "x1" in dropped or "x2" in dropped
+    assert len(pruned_df.columns) < len(df_test.columns)
+
+
 def test_low_importance_pruning():
     rf = RandomForestMetaFilter(prune_importance_threshold=0.03, max_depth=4, min_samples_leaf=5)
     np.random.seed(42)
