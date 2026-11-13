@@ -46,9 +46,10 @@ def test_loss_lock_system():
         check_daily_lock, check_profit_lock
     )
     from database.db import get_connection, init_db
+    import config
 
     # Initialize DB
-    init_db()
+    init_db(config.DB_PATH)
 
     # --- Test 1a: Default stats have loss_lock_timestamp ---
     stats = default_stats()
@@ -134,17 +135,17 @@ def test_rsi_guard_constants():
 
     test(
         "RSI_OVERSOLD_BLOCK defined",
-        RSI_OVERSOLD_BLOCK is not None and RSI_OVERSOLD_BLOCK == 25.0,
+        RSI_OVERSOLD_BLOCK is not None and RSI_OVERSOLD_BLOCK == 36.0,
         f"Got: {RSI_OVERSOLD_BLOCK}"
     )
     test(
         "RSI_OVERBOUGHT_BLOCK defined",
-        RSI_OVERBOUGHT_BLOCK is not None and RSI_OVERBOUGHT_BLOCK == 75.0,
+        RSI_OVERBOUGHT_BLOCK is not None and RSI_OVERBOUGHT_BLOCK == 64.0,
         f"Got: {RSI_OVERBOUGHT_BLOCK}"
     )
     test(
         "BREAKEVEN_ATR_MULT defined",
-        BREAKEVEN_ATR_MULT is not None and BREAKEVEN_ATR_MULT == 1.0,
+        BREAKEVEN_ATR_MULT is not None and BREAKEVEN_ATR_MULT == 0.5,
         f"Got: {BREAKEVEN_ATR_MULT}"
     )
 
@@ -177,8 +178,9 @@ def test_profit_lock():
 
     from database.stats_db import default_stats, save_stats, check_profit_lock
     from database.db import get_connection, init_db
+    import config
 
-    init_db()
+    init_db(config.DB_PATH)
     test_user_id = 9998
 
     # Setup user with high profit

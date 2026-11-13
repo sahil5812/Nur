@@ -28,26 +28,35 @@ def rsi_score(rsi: float, direction: str) -> tuple[int, str]:
     """
     Returns (score_delta, reason_string).
 
-    BUY ideal zone: RSI 40-65 → +10
-    BUY overbought: RSI >75   → -15
-    SELL ideal zone: RSI 35-60 → +10
-    SELL oversold:   RSI <25   → -15
+    BUY ideal zone:      RSI 40-60 → +10
+    BUY acceptable dip:  RSI 35-40 → +5
+    BUY overbought:      RSI >64   → -20 (exhaustion — do not buy top)
+    BUY falling knife:   RSI <35   → -15 (oversold danger)
+
+    SELL ideal pullback: RSI 40-60 → +10
+    SELL acceptable:     RSI 60-64 → +5
+    SELL oversold:       RSI <36   → -20 (exhaustion — do not short bottom)
+    SELL uptrend surge:  RSI >64   → -15 (overbought danger)
     """
     if direction == "BUY":
-        if 40 <= rsi <= 65:
+        if 40 <= rsi <= 60:
             return 10,  f"+10 RSI={rsi:.1f} (ideal BUY zone)"
-        elif 30 <= rsi < 40 or 65 < rsi <= 75:
-            return 5,   f"+5 RSI={rsi:.1f} (acceptable)"
-        elif rsi > 75:
-            return -15, f"-15 RSI={rsi:.1f} (overbought)"
+        elif 35 <= rsi < 40:
+            return 5,   f"+5 RSI={rsi:.1f} (acceptable dip)"
+        elif rsi > 64:
+            return -20, f"-20 RSI={rsi:.1f} (overbought exhaustion)"
+        elif rsi < 35:
+            return -15, f"-15 RSI={rsi:.1f} (oversold / falling knife)"
         else:
-            return 5,   f"+5 RSI={rsi:.1f} (oversold bounce)"
+            return 0,   f"+0 RSI={rsi:.1f} (neutral)"
     else:  # SELL
-        if 35 <= rsi <= 60:
-            return 10,  f"+10 RSI={rsi:.1f} (ideal SELL zone)"
-        elif 25 <= rsi < 35 or 60 < rsi <= 70:
-            return 5,   f"+5 RSI={rsi:.1f} (acceptable)"
-        elif rsi < 25:
-            return -15, f"-15 RSI={rsi:.1f} (oversold)"
+        if 40 <= rsi <= 60:
+            return 10,  f"+10 RSI={rsi:.1f} (ideal SELL pullback zone)"
+        elif 60 < rsi <= 64:
+            return 5,   f"+5 RSI={rsi:.1f} (acceptable bounce)"
+        elif rsi < 36:
+            return -20, f"-20 RSI={rsi:.1f} (oversold exhaustion — do not short bottom)"
+        elif rsi > 64:
+            return -15, f"-15 RSI={rsi:.1f} (overbought / uptrend surge)"
         else:
-            return 5,   f"+5 RSI={rsi:.1f} (overbought reversal)"
+            return 0,   f"+0 RSI={rsi:.1f} (neutral)"

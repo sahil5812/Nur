@@ -87,9 +87,9 @@ M1_TF = H1_TF = H4_TF = None
 
 # Loss protection & RSI guard
 LOSS_LOCK_EXPIRE_HOURS = 24
-RSI_OVERSOLD_BLOCK  = 25.0   # Block SELL entries when RSI is below this (market already exhausted)
-RSI_OVERBOUGHT_BLOCK = 75.0  # Block BUY entries when RSI is above this (market already exhausted)
-BREAKEVEN_ATR_MULT  = 1.0    # Move SL to entry price once profit exceeds this × ATR
+RSI_OVERSOLD_BLOCK  = 36.0   # Block SELL entries when RSI is below this (market already exhausted)
+RSI_OVERBOUGHT_BLOCK = 64.0  # Block BUY entries when RSI is above this (market already exhausted)
+BREAKEVEN_ATR_MULT  = 0.5    # Move SL to entry price once profit exceeds this × ATR
 
 _initialized = False
 
