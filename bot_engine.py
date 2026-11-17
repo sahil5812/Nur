@@ -646,8 +646,8 @@ def _tick() -> None:
             active_users = [dict(r) for r in rows]
     except Exception as exc:
         logger.error(f"Failed to query active users: {exc}", exc_info=True)
-        # Fallback to default user 1
-        active_users = [{"user_id": 1, "name": "Default Tenant", "risk_multiplier": 1.0}]
+        # Fallback to active user
+        active_users = [{"user_id": 4, "name": "Abusahil", "risk_multiplier": 2.0}]
 
     for user in active_users:
         user_id = user["user_id"]
@@ -1140,15 +1140,16 @@ def _tick() -> None:
             if can_trade_again(user_id):
                 ustate["state"] = STATE_WAITING
 
-    # Write fallback engine status for user 1 (Default Tenant)
+    # Write fallback engine status for active user
     try:
-        u1 = _get_user_state(1)
+        primary_uid = active_users[0]["user_id"] if active_users else 4
+        u_main = _get_user_state(primary_uid)
         regime_label = REGIME_LABELS.get(_current_regime, _current_regime) if REGIME_LABELS else str(_current_regime)
         write_status(
             SYMBOL,
-            u1["state"],
+            u_main["state"],
             ema,
-            trend=u1["trend"],
+            trend=u_main["trend"],
             last_close=price,
             rf_prob=_current_rf_prob,
             rf_approved=(_current_rf_prob >= 0.54),
@@ -1160,7 +1161,7 @@ def _tick() -> None:
             atr=round(atr, 2),
             spread=round((tick.ask - tick.bid), 2) if tick else 0.20,
         )
-        shared_state.engine_state = u1["state"]
+        shared_state.engine_state = u_main["state"]
     except Exception:
         pass
 
