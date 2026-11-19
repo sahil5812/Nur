@@ -131,7 +131,7 @@ def test_rsi_guard_constants():
     print("  TEST 2: RSI Guard Constants")
     print("=" * 50)
 
-    from bot_engine import RSI_OVERSOLD_BLOCK, RSI_OVERBOUGHT_BLOCK, BREAKEVEN_ATR_MULT
+    from bot_engine import RSI_OVERSOLD_BLOCK, RSI_OVERBOUGHT_BLOCK, BREAKEVEN_ATR_MULT, SCALE_OUT_ATR_MULT
 
     test(
         "RSI_OVERSOLD_BLOCK defined",
@@ -147,6 +147,11 @@ def test_rsi_guard_constants():
         "BREAKEVEN_ATR_MULT defined",
         BREAKEVEN_ATR_MULT is not None and BREAKEVEN_ATR_MULT == 0.5,
         f"Got: {BREAKEVEN_ATR_MULT}"
+    )
+    test(
+        "SCALE_OUT_ATR_MULT defined",
+        SCALE_OUT_ATR_MULT is not None and SCALE_OUT_ATR_MULT == 1.0,
+        f"Got: {SCALE_OUT_ATR_MULT}"
     )
 
 
@@ -200,6 +205,33 @@ def test_profit_lock():
         pass
 
 
+def test_scale_out_partial_tp():
+    """Test paper trader partial_close_position functionality."""
+    print("\n" + "=" * 50)
+    print("  TEST 5: Scale-Out Partial Take-Profit")
+    print("=" * 50)
+
+    from paper.paper_trader import PaperTrader
+
+    pt = PaperTrader()
+    # Open paper position: 4.0 lots SELL @ 3725.00
+    pt.open_position(order_type=1, price=3725.00, sl=3728.00, lot=4.0)
+    positions = pt.get_positions()
+    test("Position opened with 4.0 lots", len(positions) > 0 and positions[-1].volume == 4.0)
+    ticket = positions[-1].ticket
+
+    # Partial close 2.0 lots @ 3723.00 (+2.00 profit per lot)
+    res = pt.partial_close_position(ticket=ticket, close_volume=2.0, current_price=3723.00, reason="Partial TP 50%")
+    test("partial_close_position returns tuple", res is not None)
+    if res:
+        pnl, pos = res
+        test("Realized partial PnL is +400", pnl == 400.0, f"Got: {pnl}")
+        test("Remaining lot size is 2.0", pos.volume == 2.0, f"Got: {pos.volume}")
+
+    # Clean up paper trader
+    pt.close_position(ticket, 3723.00, "Test cleanup")
+
+
 if __name__ == "__main__":
     print("\n" + "=" * 50)
     print("  🧪 NUR BOT — Loss Protection Test Suite")
@@ -209,6 +241,7 @@ if __name__ == "__main__":
     test_loss_lock_expire_hours()
     test_loss_lock_system()
     test_profit_lock()
+    test_scale_out_partial_tp()
 
     print("\n" + "=" * 50)
     total = passed + failed

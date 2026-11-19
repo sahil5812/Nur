@@ -166,6 +166,42 @@ class PaperTrader:
                 return pos
         return None
 
+    def partial_close_position(
+        self, ticket: int, close_volume: float, current_price: float, reason: str = "Partial TP 50%"
+    ) -> Optional[tuple[float, SimpleNamespace]]:
+        """
+        Closes a partial volume of an open paper position.
+        Reduces pos.volume, realizes PnL for the closed lot portion,
+        and leaves the remaining volume open.
+        """
+        for i, pos in enumerate(self._positions):
+            if pos.ticket == ticket:
+                close_volume = min(round(close_volume, 2), pos.volume)
+                direction = "BUY" if pos.type == mt5.ORDER_TYPE_BUY else "SELL"
+                if pos.type == mt5.ORDER_TYPE_BUY:
+                    partial_pnl = (current_price - pos.price_open) * close_volume * _PNL_MULTIPLIER
+                else:
+                    partial_pnl = (pos.price_open - current_price) * close_volume * _PNL_MULTIPLIER
+
+                pos.volume = round(pos.volume - close_volume, 2)
+                trade_log.info(
+                    f"[PAPER] PARTIAL CLOSE {direction} | ticket={pos.ticket} | "
+                    f"closed_vol={close_volume:.2f} | remaining_vol={pos.volume:.2f} | "
+                    f"entry={pos.price_open:.2f} | exit={current_price:.2f} | "
+                    f"pnl={partial_pnl:+.2f} | reason={reason}"
+                )
+                logger.info(
+                    f"📝 [PAPER] {direction} partial close ({close_volume:.2f} lots) @ {current_price:.2f} | "
+                    f"PnL={partial_pnl:+.2f} | Remaining={pos.volume:.2f} lots | {reason}"
+                )
+
+                if pos.volume <= 0:
+                    self._positions.pop(i)
+
+                self._save_state()
+                return round(partial_pnl, 2), pos
+        return None
+
     def update(self, current_price: float) -> list[SimpleNamespace]:
         """
         Call once per loop tick with the current market price.

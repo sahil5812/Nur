@@ -85,11 +85,12 @@ RISK_PERCENT = DAILY_LOSS_LIMIT = DAILY_PROFIT_TARGET = None
 MAX_TRADES_PER_DAY = MIN_SCORE = EMA_PERIOD = ATR_PERIOD = None
 M1_TF = H1_TF = H4_TF = None
 
-# Loss protection & RSI guard
+# Loss protection, Scale-Out & RSI guard
 LOSS_LOCK_EXPIRE_HOURS = 24
 RSI_OVERSOLD_BLOCK  = 36.0   # Block SELL entries when RSI is below this (market already exhausted)
 RSI_OVERBOUGHT_BLOCK = 64.0  # Block BUY entries when RSI is above this (market already exhausted)
 BREAKEVEN_ATR_MULT  = 0.5    # Move SL to entry price once profit exceeds this × ATR
+SCALE_OUT_ATR_MULT  = 1.0    # Bank 50% partial profit once gain reaches this × ATR
 
 _initialized = False
 
@@ -266,7 +267,14 @@ def _get_session() -> str:
     return "ASIAN"
 
 
-def calculate_lot(atr: float, score: int, user_id: int = 1, risk_multiplier: float = 1.0, conviction: float = 1.0) -> float:
+def calculate_lot(
+    atr: float,
+    score: int,
+    user_id: int = 1,
+    risk_multiplier: float = 1.0,
+    conviction: float = 1.0,
+    rf_prob: float = 0.50,
+) -> float:
     account = mt5.account_info()
     if account is None:
         return 0.01
@@ -274,12 +282,21 @@ def calculate_lot(atr: float, score: int, user_id: int = 1, risk_multiplier: flo
     risk_amount = balance * (RISK_PERCENT / 100) * risk_multiplier
     sl_distance = atr * SL_ATR_MULT
     base_lot    = risk_amount / (sl_distance * 100)
-    multiplier  = 1.50 if score >= 95 else 1.30 if score >= 85 else 1.00 if score >= 75 else 0.70
+    multiplier  = 1.40 if score >= 95 else 1.25 if score >= 85 else 1.00 if score >= 75 else 0.75
 
-    # Institutional conviction-scaled position sizing
-    # Reference: Jiang et al. (arXiv:1706.10059) & Kelly Criterion
-    conviction_mult = max(0.5, min(float(conviction), 1.8))
-    multiplier *= conviction_mult
+    # Institutional Kelly Criterion & RF Meta-Filter Edge Scaling:
+    # When probability of success is high, lean into the edge. When edge is slim (borderline), scale down risk.
+    if rf_prob >= 0.65:
+        rf_sizing_mult = 1.30  # High conviction edge setup
+    elif rf_prob >= 0.55:
+        rf_sizing_mult = 1.05  # Solid conviction edge
+    elif rf_prob >= 0.48:
+        rf_sizing_mult = 0.85  # Moderate edge
+    else:
+        rf_sizing_mult = 0.65  # Borderline setup (0.42 - 0.47) -> trim lot size to avoid scratch drag
+
+    conviction_mult = max(0.6, min(float(conviction), 1.5))
+    multiplier *= (conviction_mult * rf_sizing_mult)
 
     stats = load_stats(user_id=user_id)
     if stats["loss_streak"] >= 3:   multiplier *= 0.60
@@ -287,7 +304,16 @@ def calculate_lot(atr: float, score: int, user_id: int = 1, risk_multiplier: flo
     return round(max(base_lot * multiplier, 0.01), 2)
 
 
-def send_order(user_id: int, risk_multiplier: float, order_type: int, atr: float, score: int, magic: int = 123456, conviction: float = 1.0) -> bool:
+def send_order(
+    user_id: int,
+    risk_multiplier: float,
+    order_type: int,
+    atr: float,
+    score: int,
+    magic: int = 123456,
+    conviction: float = 1.0,
+    rf_prob: float = 0.50,
+) -> bool:
     ustate = _get_user_state(user_id)
 
     tick = mt5.symbol_info_tick(SYMBOL)
@@ -297,7 +323,9 @@ def send_order(user_id: int, risk_multiplier: float, order_type: int, atr: float
 
     price = tick.ask if order_type == mt5.ORDER_TYPE_BUY else tick.bid
     sl    = price - atr * SL_ATR_MULT if order_type == mt5.ORDER_TYPE_BUY else price + atr * SL_ATR_MULT
-    lot   = calculate_lot(atr, score, user_id=user_id, risk_multiplier=risk_multiplier, conviction=conviction)
+    lot   = calculate_lot(
+        atr, score, user_id=user_id, risk_multiplier=risk_multiplier, conviction=conviction, rf_prob=rf_prob
+    )
     side  = "BUY" if order_type == mt5.ORDER_TYPE_BUY else "SELL"
 
     ustate["entry_price"] = price
@@ -367,15 +395,23 @@ def trail_stop_loss(position, atr: float) -> None:
             modify_sl(position, new_sl)
 
 
-def _handle_trade_closed(pnl: float, exit_price: float, reason: str = "SL/TP", user_id: int = 1) -> None:
+def _handle_trade_closed(
+    pnl: float,
+    exit_price: float,
+    reason: str = "SL/TP",
+    user_id: int = 1,
+    is_partial: bool = False,
+    partial_lot: float = 0.0,
+) -> None:
     ustate = _get_user_state(user_id)
     update_stats(pnl, user_id=user_id)
+    log_lot = partial_lot if is_partial and partial_lot > 0 else ustate["lot"]
     log_trade(
         direction    = "BUY" if ustate["trend"] == TREND_BULLISH else "SELL",
         entry_price  = ustate["entry_price"],
         exit_price   = exit_price,
         sl           = ustate["sl"],
-        lot          = ustate["lot"],
+        lot          = log_lot,
         score        = ustate["score"],
         pnl          = pnl,
         exit_reason  = reason,
@@ -395,16 +431,22 @@ def _handle_trade_closed(pnl: float, exit_price: float, reason: str = "SL/TP", u
     except Exception:
         pass
 
-    logger.info(f"User {user_name} Closed PnL={pnl:+.2f} Today={stats['today_pnl']:.2f} W/L={stats['wins']}/{stats['losses']}")
-    trade_log.info(f"User {user_id} ({user_name}) | CLOSE pnl={pnl:+.2f} exit={exit_price:.2f} [{reason}] regime={_current_regime}")
+    action_label = "PARTIAL TP" if is_partial else "Closed"
+    logger.info(f"User {user_name} {action_label} PnL={pnl:+.2f} Today={stats['today_pnl']:.2f} W/L={stats['wins']}/{stats['losses']}")
+    trade_log.info(f"User {user_id} ({user_name}) | {action_label} pnl={pnl:+.2f} exit={exit_price:.2f} [{reason}] regime={_current_regime}")
     if shared_state.send_message:
-        emoji = "✅" if pnl > 0 else "❌"
+        emoji = "🎯" if is_partial else ("✅" if pnl > 0 else "❌")
+        tag = "🎯 PARTIAL TP 50%" if is_partial else f"{emoji} Closed"
         shared_state.send_message(
-            f"👤 {user_name} | {emoji} Closed PnL:{pnl:+.2f}\nToday:{stats['today_pnl']:.2f} "
+            f"👤 {user_name} | {tag} PnL:{pnl:+.2f}\nToday:{stats['today_pnl']:.2f} "
             f"W{stats['win_streak']}/L{stats['loss_streak']}"
         )
-    ustate["last_known_profit"] = 0.0
-    ustate["last_trade_time"]   = time.time()
+    if is_partial:
+        # Deduct closed lot from active tracked lot
+        ustate["lot"] = round(max(ustate["lot"] - log_lot, 0.01), 2)
+    else:
+        ustate["last_known_profit"] = 0.0
+        ustate["last_trade_time"]   = time.time()
 
 
 def load_pending_commands(user_id: int) -> list[dict]:
@@ -1076,11 +1118,12 @@ def _tick() -> None:
 
                         base_conv = float(rl_conf.get("BUY", 1.0)) if not rl_degenerate else 1.0
                         buy_conviction = max(base_conv, float(rf_prob * 1.5))
-                        if send_order(user_id, risk_multiplier, mt5.ORDER_TYPE_BUY, atr, score, conviction=buy_conviction):
+                        if send_order(user_id, risk_multiplier, mt5.ORDER_TYPE_BUY, atr, score, conviction=buy_conviction, rf_prob=rf_prob):
                             ustate["state"] = STATE_IN_TRADE
                             ustate["trend"] = TREND_BULLISH
                             ustate["pullback_seen"] = False
                             ustate["breakeven_done"] = False
+                            ustate["partial_tp_done"] = False
 
             elif h1_trend == TREND_BEARISH and h4_trend != TREND_BULLISH and (rl_action == "SELL" or rl_degenerate):
                 if ustate["pullback_seen"] and price < ema:
@@ -1105,11 +1148,12 @@ def _tick() -> None:
 
                         base_conv = float(rl_conf.get("SELL", 1.0)) if not rl_degenerate else 1.0
                         sell_conviction = max(base_conv, float(rf_prob * 1.5))
-                        if send_order(user_id, risk_multiplier, mt5.ORDER_TYPE_SELL, atr, score, conviction=sell_conviction):
+                        if send_order(user_id, risk_multiplier, mt5.ORDER_TYPE_SELL, atr, score, conviction=sell_conviction, rf_prob=rf_prob):
                             ustate["state"] = STATE_IN_TRADE
                             ustate["trend"] = TREND_BEARISH
                             ustate["pullback_seen"] = False
                             ustate["breakeven_done"] = False
+                            ustate["partial_tp_done"] = False
 
         elif ustate["state"] == STATE_IN_TRADE:
             if not user_position:
@@ -1120,7 +1164,49 @@ def _tick() -> None:
             else:
                 ustate["last_known_profit"] = user_position.profit
 
-                # ── Breakeven Stop Loss: move SL to entry once profit > BREAKEVEN_ATR_MULT × ATR ──
+                # ── 1. Scale-Out Partial TP: Bank 50% Profit @ 1.0x ATR ──
+                if not ustate.get("partial_tp_done", False):
+                    scale_out_threshold = atr * SCALE_OUT_ATR_MULT * user_position.volume * 100
+                    if user_position.profit >= scale_out_threshold:
+                        half_lot = round(user_position.volume / 2.0, 2)
+                        if half_lot >= 0.01:
+                            partial_pnl = 0.0
+                            if config.PAPER_TRADING:
+                                res = _paper.partial_close_position(user_position.ticket, half_lot, price, "Partial TP 50% [paper]")
+                                if res:
+                                    partial_pnl = res[0]
+                            else:
+                                close_type = mt5.ORDER_TYPE_SELL if user_position.type == mt5.ORDER_TYPE_BUY else mt5.ORDER_TYPE_BUY
+                                req = {
+                                    "action": mt5.TRADE_ACTION_DEAL,
+                                    "position": user_position.ticket,
+                                    "symbol": SYMBOL,
+                                    "volume": half_lot,
+                                    "type": close_type,
+                                    "price": price,
+                                    "deviation": DEVIATION,
+                                    "magic": getattr(user_position, "magic", 123456),
+                                    "comment": f"NUR Partial TP {user_id}",
+                                    "type_time": mt5.ORDER_TIME_GTC,
+                                    "type_filling": mt5.ORDER_FILLING_IOC,
+                                }
+                                res_mt5 = mt5.order_send(req)
+                                if res_mt5 and res_mt5.retcode == mt5.TRADE_RETCODE_DONE:
+                                    partial_pnl = (price - ustate["entry_price"]) * half_lot * 100 if user_position.type == mt5.ORDER_TYPE_BUY else (ustate["entry_price"] - price) * half_lot * 100
+
+                            _handle_trade_closed(partial_pnl, price, "Partial TP 50%", user_id=user_id, is_partial=True, partial_lot=half_lot)
+                            ustate["partial_tp_done"] = True
+
+                            # Instantly move SL on the remaining half volume to Breakeven
+                            entry_price = ustate["entry_price"]
+                            modify_sl(user_position, entry_price)
+                            ustate["breakeven_done"] = True
+                            logger.info(
+                                f"User {user['name']} 🎯 Scale-Out 50% ({half_lot} lots) booked @ {price:.2f} | "
+                                f"Banked profit=+${partial_pnl:.2f} | Remaining {user_position.volume:.2f} lots locked at Breakeven {entry_price:.2f}"
+                            )
+
+                # ── 2. Breakeven Stop Loss: move SL to entry once profit > BREAKEVEN_ATR_MULT × ATR ──
                 if not ustate.get("breakeven_done", False):
                     breakeven_threshold = atr * BREAKEVEN_ATR_MULT * user_position.volume * 100
                     if user_position.profit >= breakeven_threshold:

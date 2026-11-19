@@ -160,18 +160,31 @@ To prevent buying the top of a rally or shorting the absolute bottom of a dump:
   * Overbought Chasing ($RSI > 64.0$ on BUY): **-20 Points Penalty**
   * Oversold Chasing ($RSI < 36.0$ on SELL): **-20 Points Penalty**
 
-### 2. ⚡ Ultra-Fast Breakeven (0.5x ATR Protection)
-* Traditional trading bots wait for 1.5x or 2.0x ATR before moving to breakeven, leaving open positions vulnerable to sudden institutional liquidity sweeps.
-* **NUR moves Stop Loss to Entry Price at just `0.5x ATR` in floating profit**.
-* In Gold trading (where average M1 ATR is ~$2.00 - $3.00), as soon as the trade gains **$1.00 - $1.50**, the stop loss is clamped to entry price, turning the trade **100% risk-free within 2 minutes**.
+### 2. ⚡ Ultra-Fast Breakeven (0.5x ATR Protection) & Scale-Out Partial TP (1.0x ATR)
+* **0.5x ATR Fast Breakeven:**
+  * In Gold trading (where average M1 ATR is ~$2.00 - $3.00), as soon as the trade gains **$1.00 - $1.50** (0.5x ATR), the stop loss is clamped to entry price, turning the trade **100% risk-free within 2 minutes**.
+* **Scale-Out Partial Take-Profit (50% Cash Lock @ 1.0x ATR):**
+  * Once the trade expands into a **1.0x ATR gain** (~$2.50+ on Gold), the engine automatically closes **50% of the lot size**, banking immediate realized cash profit into the balance.
+  * The remaining 50% position has its Stop Loss locked firmly at Breakeven as an unconstrained **"Free Runner"** to ride multi-thousand dollar trend expansions.
 
-### 3. 📈 Dynamic 1.5x ATR Ratchet Trailing Stop
-* Once breakeven is locked, a dynamic trailing stop continuously tracks price tick-by-tick.
-* For SELL positions: $SL_{\text{new}} = \min(SL_{\text{current}}, \text{Price} + 1.5 \times ATR)$
-* For BUY positions: $SL_{\text{new}} = \max(SL_{\text{current}}, \text{Price} - 1.5 \times ATR)$
-* As Gold explodes in the trade direction, profits ratchet up automatically, capturing massive runner moves (e.g. +$20,479.80 peak trade).
+### 3. 📈 Dynamic 1.5x ATR Ratchet Trailing Stop & Kelly Edge Sizing
+* **Ratchet Trailing SL:**
+  * For SELL positions: $SL_{\text{new}} = \min(SL_{\text{current}}, \text{Price} + 1.5 \times ATR)$
+  * For BUY positions: $SL_{\text{new}} = \max(SL_{\text{current}}, \text{Price} - 1.5 \times ATR)$
+  * As Gold explodes in the trade direction, profits ratchet up automatically, capturing massive runner moves (e.g. +$20,479.80 peak trade).
+* **Conviction-Weighted Kelly Position Sizing:**
+  * Lot sizes dynamically scale based on the Random Forest Meta-Filter's calibrated success probability $P(\text{Success} \mid X)$:
+    * $P \ge 65\%$ (High Conviction Edge): **1.30x Sizing Multiplier** (aggressive capture)
+    * $0.55 \le P < 0.65$ (Solid Edge): **1.05x Sizing Multiplier**
+    * $0.48 \le P < 0.55$ (Moderate Edge): **0.85x Sizing Multiplier**
+    * $P < 0.48$ (Borderline Edge): **0.65x Sizing Multiplier** (defensive risk trimming)
 
-### 4. 🔒 Multi-Tenant Daily Loss & Profit Locks
+### 4. 📰 Live ForexFactory Economic Calendar & Volatility Blackout
+* Automated real-time ingestion of high-impact USD releases (NFP, CPI, FOMC, PPI, Retail Sales, Fed Chair Speeches).
+* Features a local 6-hour TTL cache (`logs/news_calendar.json`) with graceful offline fallback to deterministic mathematical schedules.
+* Automatically halts trading during a strict **15-minute buffer before and after** high-impact releases, completely shielding accounts from wild slippage and spread spikes.
+
+### 5. 🔒 Multi-Tenant Daily Loss & Profit Locks
 * **Daily Loss Limit (`DAILY_LOSS_LIMIT`, default -$50 USD)**:
   * If daily realized losses exceed the limit, the trading engine instantly locks the account for **24 hours**.
   * Prevents revenge trading, emotional spirals, and adverse market regime shifts.
