@@ -973,51 +973,263 @@ body {
   padding: 8px 0;
 }
 
-/* ── Account Switcher Dropdown ── */
+/* ── Account Switcher Dropdown & Profile Menu ── */
 .profile-switcher-container {
   position: relative;
 }
 
 .profile-badge-btn {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background-color: var(--bg-card2);
-  border: 1px solid var(--border);
-  color: var(--text-1);
-  font-size: 11px;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-size: 12px;
   font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   position: relative;
+  transition: all var(--dur-fast) var(--ease);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  user-select: none;
+}
+
+.profile-badge-btn:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.45);
+  transform: translateY(-1px);
 }
 
 .active-dot {
   position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 6px;
-  height: 6px;
+  bottom: -1px;
+  right: -1px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background-color: var(--green);
-  border: 1px solid var(--bg-card);
+  border: 2px solid var(--bg-card);
+  box-shadow: 0 0 6px rgba(76, 195, 138, 0.7);
+}
+
+@keyframes dropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .account-switcher-dropdown {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 10px);
   right: 0;
-  width: 260px;
-  background-color: var(--bg-card);
-  border: 1px solid var(--border);
+  width: 280px;
+  background: rgba(17, 20, 28, 0.98);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--radius);
-  padding: 8px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
-  z-index: 200;
+  padding: 10px;
+  box-shadow: 0 24px 48px -8px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  z-index: 500;
+  animation: dropdownFadeIn var(--dur-fast) var(--ease);
 }
 
+/* Header / Active Account Box */
+.switcher-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 10px 12px 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+
+.switcher-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: #ffffff;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.switcher-user-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.switcher-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.switcher-email {
+  font-size: 11px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.switcher-mt5 {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 500;
+  background: rgba(76, 195, 138, 0.12);
+  color: #4cc38a;
+  border: 1px solid rgba(76, 195, 138, 0.28);
+  padding: 2px 7px;
+  border-radius: 4px;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+.switcher-mt5-indicator {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: var(--green);
+  box-shadow: 0 0 5px rgba(76, 195, 138, 0.8);
+}
+
+/* Secondary Section / Accounts List */
+.switcher-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--text-3);
+  padding: 6px 10px 4px 10px;
+}
+
+.switcher-accounts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 6px;
+}
+
+.switcher-account-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.switcher-account-item:hover {
+  background-color: var(--bg-card-hover);
+}
+
+.switcher-account-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background-color: var(--bg-card2);
+  border: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 10px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.switcher-account-details {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.switcher-account-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.switcher-account-email {
+  font-size: 10px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.switcher-divider {
+  height: 1px;
+  background-color: var(--border);
+  margin: 6px 0;
+}
+
+/* Menu Actions */
+.switcher-action-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+  user-select: none;
+}
+
+.switcher-action-item svg {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.switcher-action-item:hover {
+  background-color: var(--bg-card-hover);
+  color: var(--text-1);
+}
+
+.switcher-action-item:hover svg {
+  opacity: 1;
+}
+
+.switcher-action-item.danger {
+  color: var(--red);
+}
+
+.switcher-action-item.danger:hover {
+  background-color: rgba(229, 72, 77, 0.12);
+  color: #ff6b6b;
+}
+
+/* Backward compatibility classes */
 .account-item {
   display: flex;
   align-items: center;
@@ -1027,32 +1239,10 @@ body {
   cursor: pointer;
   transition: background-color var(--dur-fast) var(--ease);
 }
-
-.account-item:hover {
-  background-color: var(--bg-card2);
-}
-
-.account-item.active {
-  background-color: var(--bg-card2);
-}
-
-.account-name {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-1);
-}
-
-.account-email {
-  font-size: 10px;
-  color: var(--text-3);
-}
-
-.account-actions-divider {
-  height: 1px;
-  background-color: var(--border-subtle);
-  margin: 6px 0;
-}
-
+.account-item:hover { background-color: var(--bg-card2); }
+.account-name { font-size: 12px; font-weight: 500; color: var(--text-1); }
+.account-email { font-size: 10px; color: var(--text-3); }
+.account-actions-divider { height: 1px; background-color: var(--border-subtle); margin: 6px 0; }
 .account-action-item {
   display: flex;
   align-items: center;
@@ -1064,15 +1254,8 @@ body {
   cursor: pointer;
   transition: all var(--dur-fast) var(--ease);
 }
-
-.account-action-item:hover {
-  background-color: var(--bg-card2);
-  color: var(--text-1);
-}
-
-.account-action-item.signout:hover {
-  color: var(--red);
-}
+.account-action-item:hover { background-color: var(--bg-card2); color: var(--text-1); }
+.account-action-item.signout:hover { color: var(--red); }
 
 /* ── Auth Forms (Login / Register) ── */
 .auth-container {
@@ -1192,4 +1375,353 @@ body {
   font-size: 12px;
   margin-bottom: 14px;
   text-align: center;
+}
+
+/* ── Google Sign-In Button & Separator ── */
+.google-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background-color: #ffffff;
+  color: #1f2937;
+  border: 1px solid #e5e7eb;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.google-btn:hover {
+  background-color: #f9fafb;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.google-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.google-btn-icon {
+  width: 18px;
+  height: 18px;
+}
+
+.auth-separator {
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0;
+}
+
+.auth-separator::before,
+.auth-separator::after {
+  content: '';
+  flex: 1;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-separator:not(:empty)::before {
+  margin-right: 12px;
+}
+
+.auth-separator:not(:empty)::after {
+  margin-left: 12px;
+}
+
+/* ── Saved Accounts (Fast Switch Cards) ── */
+.saved-accounts-container {
+  margin-bottom: 20px;
+}
+
+.saved-accounts-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-3);
+  margin-bottom: 10px;
+}
+
+.saved-accounts-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.saved-account-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 14px 10px;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+}
+
+.saved-account-card:hover {
+  border-color: var(--accent);
+  background: var(--bg-card-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
+}
+
+.saved-account-remove {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  background: transparent;
+  border: none;
+  color: var(--text-3);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+}
+
+.saved-account-remove:hover {
+  color: var(--red);
+  background: rgba(229, 72, 77, 0.1);
+}
+
+.saved-account-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  position: relative;
+  background-size: cover;
+  background-position: center;
+}
+
+.saved-account-status.active {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background-color: var(--green);
+  border: 2px solid var(--bg-card2);
+}
+
+.saved-account-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.saved-account-email {
+  font-size: 10px;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  margin-top: 2px;
+}
+
+.saved-account-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 14px 10px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+  min-height: 100px;
+}
+
+.saved-account-add:hover {
+  border-color: var(--accent);
+  background: rgba(59, 130, 246, 0.05);
+}
+
+.saved-account-add-icon {
+  font-size: 22px;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.saved-account-add-text {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-2);
+}
+
+/* ── Form Inputs with Feedback & Row Layouts ── */
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+.input-feedback-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-feedback-wrap .form-input {
+  width: 100%;
+}
+
+.password-toggle-eye {
+  position: absolute;
+  right: 10px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 14px;
+  opacity: 0.7;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+
+.password-toggle-eye:hover {
+  opacity: 1;
+}
+
+.input-feedback-icon {
+  position: absolute;
+  right: 10px;
+  font-size: 13px;
+  font-weight: bold;
+}
+
+.input-feedback-icon.valid {
+  color: var(--green);
+}
+
+.input-feedback-icon.invalid {
+  color: var(--red);
+}
+
+.input-feedback-icon.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+.form-field-error {
+  font-size: 11px;
+  color: var(--red);
+  margin-top: 4px;
+}
+
+.form-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+}
+
+.form-checkbox input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* ── Password Strength Meter & Checklist ── */
+.password-strength-container {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  margin-top: 4px;
+}
+
+.password-strength-text {
+  font-size: 11px;
+  color: var(--text-2);
+  margin-bottom: 6px;
+}
+
+.password-strength-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  margin-bottom: 8px;
+}
+
+.password-strength-segment {
+  height: 4px;
+  background-color: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+
+/* Strength coloring */
+.strength-Weak .password-strength-segment:nth-child(1) {
+  background-color: var(--red);
+}
+
+.strength-Medium .password-strength-segment:nth-child(-n+2) {
+  background-color: var(--yellow);
+}
+
+.strength-Strong .password-strength-segment:nth-child(-n+4) {
+  background-color: var(--green);
+}
+
+.password-checklist {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 10px;
+  margin-top: 6px;
+}
+
+.checklist-item {
+  font-size: 10px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: color var(--dur-fast) var(--ease);
+}
+
+.checklist-item.met {
+  color: var(--green);
+}
+
+.checklist-item-icon {
+  font-size: 11px;
+  font-weight: bold;
 }
