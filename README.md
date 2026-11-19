@@ -8,10 +8,11 @@
 [![Stable-Baselines3](https://img.shields.io/badge/Stable_Baselines3-00e5ff?style=for-the-badge)](https://github.com/DLR-RM/stable-baselines3)
 [![MetaTrader 5](https://img.shields.io/badge/MetaTrader_5-007ACC?style=for-the-badge)](https://www.metatrader5.com)
 [![SQLite WAL](https://img.shields.io/badge/SQLite-WAL_Mode-003B57?style=for-the-badge&logo=sqlite&logoColor=white)](https://sqlite.org)
+[![Tests Passing](https://img.shields.io/badge/Tests-43%2F43_Passing-00E676?style=for-the-badge)](https://github.com/sahil5812/Nur)
 
-**NUR** is an institutional-grade, event-driven algorithmic trading platform and quantitative execution terminal engineered specifically for **XAUUSD (Gold Spot)** on **MetaTrader 5 (MT5)**. The platform fuses multi-timeframe structural market analysis (H4 Macro Trend, H1 Directional Momentum, M1 Dynamic Cushion Scalp) with **Hierarchical Multi-Agent Reinforcement Learning (MARL)**, an **HMM Market Regime Router**, an advanced **Random Forest Meta-Filter with Triple-Pruning**, and an automated **Fast Breakeven & Trailing Stop Risk Engine**.
+**NUR** is an institutional-grade, event-driven algorithmic trading platform and quantitative execution terminal engineered specifically for **XAUUSD (Gold Spot)** on **MetaTrader 5 (MT5)**. The platform synthesizes multi-timeframe structural market analysis (H4 Macro Trend, H1 Directional Momentum, M1 Dynamic Cushion Scalp) with **Hierarchical Multi-Agent Reinforcement Learning (MARL)**, an **HMM Market Regime Router**, an advanced **Random Forest Meta-Filter with 4-Stage Pruning & Recursive VIF**, and an automated **Execution Desk featuring Scale-Out Partial TP, Kelly Conviction Sizing, and Live ForexFactory Economic News Guardrails**.
 
-The system features an ultra-responsive, dark-mode **Bloomberg/TradingView-inspired React terminal**, a native Windows desktop client (`PyWebView`), a multi-tenant SaaS backend with isolated risk profiles, and an interactive Telegram command center with Google Gemini AI integration.
+The system features an ultra-responsive, dark-mode **Bloomberg/TradingView-inspired React terminal**, a native Windows desktop client (`PyWebView`), a multi-tenant SaaS backend with isolated risk profiles and frosted-glass account switching, and an interactive Telegram command center integrated with Google Gemini AI.
 
 ---
 
@@ -28,9 +29,10 @@ Telemetry captured from live out-of-sample forward execution on MetaTrader 5 (Go
 | **Controlled Stop Loss** | **-$6,355.12 USD** | Strict Circuit Breakers | ✅ Defined Asymmetric Risk |
 | **Terminal Equity Balance** | **$148,635.69 USD** | Account Compounding | ✅ Verified |
 | **Win Rate** | **44.4%** (8W / 10L) | 35% - 50% for 3:1+ R:R | ✅ Mathematical Asymmetry |
+| **Test Suite Pass Rate** | **100% (43 / 43 Tests)** | Zero Regressions | ✅ Production Ready |
 
 > [!NOTE]
-> Even with a 44.4% win rate, the system produces a **3.89 Profit Factor** because average wins (+$6,079.46) vastly outsize tightly managed average losses (-$1,563.85). This validates the mathematical efficacy of the **0.5x ATR Breakeven Protection** and **1.5x ATR Dynamic Trailing Stop**.
+> Even with a 44.4% win rate, the system produces a **3.89 Profit Factor** because average wins (+$6,079.46) vastly outsize tightly managed average losses (-$1,563.85). This validates the mathematical efficacy of **0.5x ATR Fast Breakeven**, **1.0x ATR Partial Profit Banking (50%)**, and **1.5x ATR Dynamic Trailing Stop**.
 
 ---
 
@@ -38,52 +40,60 @@ Telemetry captured from live out-of-sample forward execution on MetaTrader 5 (Go
 
 ```mermaid
 graph TD
-    subgraph MarketFeeds ["1. Market Ingestion & MT5 Broker Gateway"]
-        MT5["MetaTrader 5 Terminal (Live XAUUSD Ticks & M1/H1/H4 Candles)"]
+    subgraph MarketFeeds ["1. Market Ingestion & MT5 Gateway"]
+        MT5["MetaTrader 5 IPC Bridge (Live Ticks & M1/M5/H1/H4 OHLCV)"]
+        NewsFeed["ForexFactory Live JSON Feed (High-Impact USD Volatility Guard)"]
     end
 
     subgraph IntelligenceLayer ["2. Hierarchical AI & Quantitative Intelligence"]
-        HMM["Hidden Markov Model (2-State Gaussian Viterbi Classifier)"]
-        MARL["MARL PPO Suite (Trend, Range, Universal Fallback)"]
-        RF["Random Forest Meta-Filter (López de Prado Triple-Pruned)"]
+        HMM["Hidden Markov Model (2-State Gaussian Viterbi Regime Router)"]
+        MARL["MARL PPO Suite (Trend PPO, Range PPO, Universal Fallback)"]
+        RF["Random Forest Meta-Filter (López de Prado 4-Stage Pruned + VIF)"]
     end
 
     subgraph TechnicalGuards ["3. Execution Rules & Dynamic Safeguards"]
-        MTF["3-TF Trend Engine (H4 Bias + H1 Direction + M1 200 EMA Pullback)"]
+        MTF["3-TF Trend Engine (H4 Macro Bias + H1 Momentum + M1 200 EMA Cushion)"]
         RSIGuard["RSI Exhaustion Guard (Block SELL < 36.0 | Block BUY > 64.0)"]
+        NewsGuard["Economic Blackout Guard (15-min Buffer Pre/Post High Impact)"]
         Scoring["Scoring Agent (Threshold >= 65, Penalty on Extreme Overbought/Oversold)"]
     end
 
-    subgraph RiskEngine ["4. Risk & Order Execution Desk"]
+    subgraph RiskEngine ["4. Institutional Risk & Order Execution Desk"]
         BotEngine["Multi-Tenant Execution Loop (bot_engine.py)"]
-        FastBE["Fast Breakeven Engine (Move SL to Entry @ 0.5x ATR Profit)"]
+        KellySizing["Kelly Conviction Sizing (RF Edge Scaling: 0.65x - 1.30x)"]
+        FastBE["Fast Breakeven Engine (Clamp SL to Entry @ 0.5x ATR Profit)"]
+        ScaleOut["Scale-Out Partial TP (Bank 50% Lots @ 1.0x ATR, Free Runner Tranche)"]
         TrailSL["Dynamic Trailing SL (1.5x ATR Ratchet)"]
-        DailyLock["Daily Loss Guard (-$50 Max Lock) & Profit Target Target"]
+        DailyLock["Daily Loss Guard (-$50 Max Lock) & Profit Target (+$100 Target)"]
         PaperTrader["Paper Trader Engine (Crash-Resilient JSON Persistence)"]
     end
 
-    subgraph Backend ["5. Core API & Database"]
-        FastAPI["FastAPI Gateway (Port 8000 REST + WebSockets)"]
-        DB["SQLite Database (WAL Mode + Multi-Tenant Profiles)"]
+    subgraph Backend ["5. Core API & Database Layer"]
+        FastAPI["FastAPI Gateway (Port 8000 REST + Sub-Second WebSockets)"]
+        DB["SQLite Database (WAL Mode + Multi-Tenant Isolation)"]
     end
 
     subgraph ClientInterfaces ["6. Institutional User Interfaces"]
         DesktopApp["Native Windows Desktop App (PyWebView + Auto-Shortcut)"]
-        ReactUI["Bloomberg-Style React Terminal (Vite + Dark Mode)"]
+        ReactUI["Bloomberg-Style React Terminal (Vite + Frosted Account Switcher)"]
         TelegramBot["Telegram Remote Controller + Gemini NLP Chat"]
     end
 
     MT5 -->|Real-Time Ticks & OHLCV| MTF
+    NewsFeed -->|Weekly Calendar Ingestion| NewsGuard
     MTF -->|State Features & Distance| HMM
     HMM -->|Decoded Regime: TREND vs RANGE| MARL
     MARL -->|Action Candidate: BUY / SELL / HOLD| RF
     RF -->|Conviction Gate: P >= 42%| Scoring
+    NewsGuard -->|Volatile Event Veto| Scoring
     RSIGuard -->|Veto on Exhaustion| Scoring
-    Scoring -->|Approved Setup: Score >= 65| BotEngine
+    Scoring -->|Approved Setup: Score >= 65| KellySizing
+    KellySizing -->|Calibrated Lot Size| BotEngine
 
     BotEngine -->|Active Position State| FastBE
-    FastBE -->|0.5x ATR Gain Reached| TrailSL
-    TrailSL -->|Ratchet Protected SL| PaperTrader
+    FastBE -->|0.5x ATR Gain Reached| ScaleOut
+    ScaleOut -->|1.0x ATR Gain: Bank 50%| TrailSL
+    TrailSL -->|Ratchet Protected Free Runner| PaperTrader
     PaperTrader -->|Persist Trade History| DB
     DailyLock -->|Circuit Breaker Shutdown| BotEngine
 
@@ -113,7 +123,7 @@ graph TD
   * `ppo_range.zip`: Tuned for boundary mean-reversion, tight profit targets, and rapid inventory turnover.
   * `ppo_xauusd.zip`: Universal baseline agent trained across all historical market conditions.
 
-### 3. 🌲 Random Forest Meta-Filter with Triple-Pruning (`intelligence/rf_filter.py`)
+### 3. 🌲 Random Forest Meta-Filter with 4-Stage Pruning & Recursive VIF (`intelligence/rf_filter.py`)
 Inspired by **Marcos López de Prado's Meta-Labeling** methodology (*Advances in Financial Machine Learning*):
 * The primary strategy (MTF trend + MARL policy) proposes trade direction (BUY/SELL).
 * The Random Forest Meta-Model acts as a **secondary gatekeeper**, predicting the probability of trade success:
@@ -134,24 +144,44 @@ Inspired by **Marcos López de Prado's Meta-Labeling** methodology (*Advances in
    * Governed by cost-complexity factor $\alpha_{ccp} = 0.001$, `max_depth = 8`, `min_samples_leaf = 30`, and `min_samples_split = 60`, preventing decision tree overfitting.
 
 #### 12 Active Quantitative Features:
-1. `z_h1`: H1 normalized price distance to 200 EMA in units of ATR.
-2. `z_m5`: M5 normalized price distance to 200 EMA.
-3. `z_m1`: M1 entry bar normalized distance to 200 EMA.
-4. `rsi`: 14-period Relative Strength Index.
-5. `rsi_slope_5`: 5-candle momentum derivative of RSI.
-6. `macd_hist`: MACD(12,26,9) histogram momentum spread.
-7. `atr_normalized`: 14-period ATR standardized against rolling mean and volatility.
-8. `realized_vol_20`: 20-period realized standard deviation of log returns.
-9. `spread_ratio`: Real-time broker bid-ask spread divided by ATR.
-10. `gamma_trend`: HMM smoothed posterior probability of trending regime.
-11. `z_alignment`: Multi-timeframe trend directional consensus score.
-12. `hour_sin` / `hour_cos`: Cyclical sinusoidal diurnal trading session encodings.
+| Feature | Type | Description |
+| :--- | :--- | :--- |
+| `z_h1` | Macro Distance | H1 normalized price distance to 200 EMA in units of ATR |
+| `z_m5` | Structure Distance | M5 normalized price distance to 200 EMA |
+| `z_m1` | Micro Distance | M1 entry bar normalized distance to 200 EMA |
+| `rsi` | Oscillator | 14-period Relative Strength Index |
+| `rsi_slope_5` | Momentum Derivative | 5-candle linear slope of RSI |
+| `macd_hist` | Momentum Spread | MACD(12,26,9) histogram spread |
+| `atr_normalized` | Volatility | 14-period ATR standardized against rolling mean and volatility |
+| `realized_vol_20` | Volatility | 20-period realized standard deviation of log returns |
+| `spread_ratio` | Execution Friction | Real-time broker bid-ask spread divided by ATR |
+| `gamma_trend` | Regime Belief | HMM smoothed posterior probability of trending regime |
+| `z_alignment` | Consensus | Multi-timeframe trend directional consensus score |
+| `hour_sin` / `hour_cos` | Temporal Harmonics | Cyclical sinusoidal diurnal trading session encodings |
 
 ---
 
 ## 🛡️ Institutional Risk Management & Execution Guards
 
-### 1. 🚫 RSI Extreme Exhaustion Guards
+### 1. ⚡ Scale-Out Partial Take-Profit (50% Cash Lock @ 1.0x ATR)
+* When a trade advances into **$1.0 \times ATR$ gain** (~$2.50+ on Gold Spot), the execution desk immediately closes **50% of the active volume**, banking guaranteed realized cash into the account balance.
+* The remaining 50% tranche has its Stop Loss clamped to entry (Breakeven) as an unconstrained **"Free Runner"** to ride multi-hundred pip market trends risk-free.
+* Fully integrated across both MT5 broker execution and `paper_trader.py` with lot tracking and SQLite trade logging.
+
+### 2. ⚖️ Conviction-Weighted Kelly Position Sizing
+* Rather than using a static lot size, trade volume dynamically scales based on the Random Forest Meta-Filter's calibrated success probability $P(\text{Success} \mid X)$:
+  * **$P \ge 65\%$ (High Conviction Edge):** **1.30x Multiplier** (aggressive edge capture)
+  * **$0.55 \le P < 0.65$ (Solid Edge):** **1.05x Multiplier**
+  * **$0.48 \le P < 0.55$ (Moderate Edge):** **0.85x Multiplier**
+  * **$P < 0.48$ (Borderline Edge):** **0.65x Multiplier** (defensive risk trimming)
+* Includes loss-streak circuit scaling ($2\text{ consecutive losses} \rightarrow 0.80\times$, $\ge 3\text{ consecutive losses} \rightarrow 0.60\times$).
+
+### 3. 📰 Live ForexFactory Economic Calendar & Volatility Blackout (`intelligence/news_filter.py`)
+* Automated real-time ingestion of high-impact USD economic releases (NFP, CPI, FOMC, PPI, Retail Sales, Fed Chair Speeches).
+* Features a local 6-hour TTL cache (`logs/news_calendar.json`) with graceful offline fallback to deterministic mathematical schedules.
+* Automatically halts trading during a strict **15-minute buffer before and after** high-impact releases, completely shielding accounts from wild slippage and spread spikes.
+
+### 4. 🚫 RSI Extreme Exhaustion Guards
 To prevent buying the top of a rally or shorting the absolute bottom of a dump:
 * **`RSI_OVERSOLD_BLOCK = 36.0`**: If M1 RSI is below 36.0, **SELL entries are strictly blocked**. Even in a strong bearish trend, shorting when RSI is oversold leads to immediate bounce drawdown.
 * **`RSI_OVERBOUGHT_BLOCK = 64.0`**: If M1 RSI is above 64.0, **BUY entries are strictly blocked**.
@@ -160,31 +190,14 @@ To prevent buying the top of a rally or shorting the absolute bottom of a dump:
   * Overbought Chasing ($RSI > 64.0$ on BUY): **-20 Points Penalty**
   * Oversold Chasing ($RSI < 36.0$ on SELL): **-20 Points Penalty**
 
-### 2. ⚡ Ultra-Fast Breakeven (0.5x ATR Protection) & Scale-Out Partial TP (1.0x ATR)
-* **0.5x ATR Fast Breakeven:**
-  * In Gold trading (where average M1 ATR is ~$2.00 - $3.00), as soon as the trade gains **$1.00 - $1.50** (0.5x ATR), the stop loss is clamped to entry price, turning the trade **100% risk-free within 2 minutes**.
-* **Scale-Out Partial Take-Profit (50% Cash Lock @ 1.0x ATR):**
-  * Once the trade expands into a **1.0x ATR gain** (~$2.50+ on Gold), the engine automatically closes **50% of the lot size**, banking immediate realized cash profit into the balance.
-  * The remaining 50% position has its Stop Loss locked firmly at Breakeven as an unconstrained **"Free Runner"** to ride multi-thousand dollar trend expansions.
-
-### 3. 📈 Dynamic 1.5x ATR Ratchet Trailing Stop & Kelly Edge Sizing
-* **Ratchet Trailing SL:**
+### 5. ⚡ Ultra-Fast Breakeven (0.5x ATR) & Ratchet Trailing Stop (1.5x ATR)
+* **0.5x ATR Fast Breakeven:** In Gold trading (where average M1 ATR is ~$2.00 - $3.00), as soon as the trade gains **$1.00 - $1.50** (0.5x ATR), the stop loss is clamped to entry price, turning the trade **100% risk-free within 2 minutes**.
+* **1.5x ATR Ratchet Trailing SL:**
   * For SELL positions: $SL_{\text{new}} = \min(SL_{\text{current}}, \text{Price} + 1.5 \times ATR)$
   * For BUY positions: $SL_{\text{new}} = \max(SL_{\text{current}}, \text{Price} - 1.5 \times ATR)$
-  * As Gold explodes in the trade direction, profits ratchet up automatically, capturing massive runner moves (e.g. +$20,479.80 peak trade).
-* **Conviction-Weighted Kelly Position Sizing:**
-  * Lot sizes dynamically scale based on the Random Forest Meta-Filter's calibrated success probability $P(\text{Success} \mid X)$:
-    * $P \ge 65\%$ (High Conviction Edge): **1.30x Sizing Multiplier** (aggressive capture)
-    * $0.55 \le P < 0.65$ (Solid Edge): **1.05x Sizing Multiplier**
-    * $0.48 \le P < 0.55$ (Moderate Edge): **0.85x Sizing Multiplier**
-    * $P < 0.48$ (Borderline Edge): **0.65x Sizing Multiplier** (defensive risk trimming)
+  * Ratchets dynamically as Gold moves, capturing major trend legs.
 
-### 4. 📰 Live ForexFactory Economic Calendar & Volatility Blackout
-* Automated real-time ingestion of high-impact USD releases (NFP, CPI, FOMC, PPI, Retail Sales, Fed Chair Speeches).
-* Features a local 6-hour TTL cache (`logs/news_calendar.json`) with graceful offline fallback to deterministic mathematical schedules.
-* Automatically halts trading during a strict **15-minute buffer before and after** high-impact releases, completely shielding accounts from wild slippage and spread spikes.
-
-### 5. 🔒 Multi-Tenant Daily Loss & Profit Locks
+### 6. 🔒 Multi-Tenant Daily Loss & Profit Locks
 * **Daily Loss Limit (`DAILY_LOSS_LIMIT`, default -$50 USD)**:
   * If daily realized losses exceed the limit, the trading engine instantly locks the account for **24 hours**.
   * Prevents revenge trading, emotional spirals, and adverse market regime shifts.
@@ -195,12 +208,33 @@ To prevent buying the top of a rally or shorting the absolute bottom of a dump:
 
 ---
 
+## 🖥️ Institutional UI & Client Terminals
+
+### 1. 🎨 Bloomberg/TradingView Luxury Dark Design System
+* **Deep Obsidian Surface Palette:** High-contrast, zero-eyestrain dark palette (`#0B0E14` base, `#10141D` card elevation, `#161B26` border definition).
+* **Prestige Accents:** Sovereign Gold (`#D4AF37`) for prime convictions, Emerald Green (`#00E676`) for profit expansion, Crimson Red (`#FF5252`) for risk defense.
+* **Live Market Ribbon:** Real-time stream of Spot Price, 200 EMA distance, ATR volatility, Spread friction, and HMM Regime badge.
+
+### 2. 👤 Frosted Glass Multi-Tenant Account Switcher (`AccountSwitcher.jsx`)
+* **Vector Icon Integration:** Clean, high-DPI SVG icons for accounts, user avatars, credentials, and actions.
+* **Interactive MT5 Badge:** Displays active MT5 account ID (`MT5 #5058657813`) with live connection indicator.
+* **Instant Tenant Switching:** Switch between live trading profiles, multi-account setups, or paper simulation with a single click.
+* **Session Management:** One-click "Add another account", individual "Sign out", and global "Sign out all accounts".
+
+### 3. 🔐 Enterprise Auth Portal & Security Guard
+* **Google One-Tap / OAuth:** Integrated Google Identity Services with seamless JWT credential decoding.
+* **Real-Time Input Validation:** Format verification for usernames, emails, and MT5 logins.
+* **Password Strength Analyzer:** Interactive visual strength indicator (Weak, Medium, Strong) with entropy checking.
+* **Argon2 Hashing & Multi-Tenant SQLite Persistence:** Secure authentication with 24-hour JWT token sessions.
+
+---
+
 ## 📁 Repository Structure
 
 ```
 Nur/
 ├── api/                             # FastAPI Backend & WebSockets
-│   ├── auth.py                      # JWT authentication, Argon2 hashing & OAuth
+│   ├── auth.py                      # JWT authentication, Argon2 hashing & Google OAuth
 │   └── main.py                      # REST endpoints, WebSocket live stream & manual override
 ├── core/                            # Trading Engine & State Machine
 │   ├── engine.py                    # Trading coordinator loop
@@ -212,11 +246,15 @@ Nur/
 │   ├── src/
 │   │   ├── components/
 │   │   │   ├── Header.jsx           # Gateway status, account balance, user menu
+│   │   │   ├── AccountSwitcher.jsx  # Luxury frosted glass profile & tenant dropdown
 │   │   │   ├── MarketRibbon.jsx     # High-density ticker ribbon (Spot, EMA, ATR, Regime)
-│   │   │   ├── MainChartPanel.jsx   # Live M1/M5/H1 Candlestick chart + 200 EMA overlay
-│   │   │   ├── AIExecutionDesk.jsx  # Conviction gauge, risk slider, Buy/Sell/Flatten buttons
-│   │   │   └── TerminalDock.jsx     # Order history, performance analytics, engine stream
+│   │   │   ├── MainChartPanel.jsx   # Live Candlestick chart + 200 EMA overlay
+│   │   │   ├── AIExecutionDesk.jsx  # Conviction gauge, risk slider, Buy/Sell/Flatten
+│   │   │   ├── TerminalDock.jsx     # Order history, performance analytics, engine stream
+│   │   │   ├── AuthModal.jsx        # Enterprise login & registration modal
+│   │   │   └── GoogleAuthButton.jsx # Google One-Tap / OAuth button
 │   │   ├── hooks/useLiveData.js     # Sub-second WebSocket stream handler
+│   │   ├── index.css                # Luxury Obsidian / Gold design system stylesheet
 │   │   └── App.jsx                  # Main interface routing & layout
 │   └── package.json                 # Dashboard package dependencies
 ├── database/                        # Thread-Safe SQLite Storage
@@ -228,10 +266,11 @@ Nur/
 │   ├── ema.py                       # Exponential Moving Average engine
 │   ├── macd.py                      # MACD(12,26,9) line, signal, and histogram
 │   └── rsi.py                       # RSI(14) with institutional oversold/overbought scoring
-├── intelligence/                    # Quantitative Machine Learning
-│   └── rf_filter.py                 # Random Forest Meta-Filter with Triple-Pruning & VIF
+├── intelligence/                    # Quantitative Machine Learning & News Feeds
+│   ├── rf_filter.py                 # Random Forest Meta-Filter with 4-Stage Pruning & VIF
+│   └── news_filter.py               # Live ForexFactory Calendar feed & 15-min blackout guard
 ├── paper/                           # Paper Trading Simulator
-│   └── paper_trader.py              # Zero-risk execution & persistent position tracking
+│   └── paper_trader.py              # Zero-risk execution, partial TP & persistent positions
 ├── rl/                              # Reinforcement Learning Pipeline
 │   ├── agent.py                     # MARL Router (HMM + PPO agents)
 │   ├── hmm_classifier.py            # Gaussian HMM Baum-Welch & Viterbi classifier
@@ -243,14 +282,19 @@ Nur/
 │       ├── ppo_xauusd.zip           # Universal fallback PPO policy
 │       ├── rf_meta_filter.joblib    # Pruned Random Forest classifier
 │       └── rf_filter_meta.json      # Pruned feature list & training telemetry
+├── tests/                           # Pytest Quantitative QA Suite
+│   ├── test_rf_filter.py            # Random Forest pruning & VIF verification (8 tests)
+│   ├── test_news_filter.py          # ForexFactory & volatility blackout tests (5 tests)
+│   ├── test_engine.py               # Engine loop & MT5 IPC bridge tests (4 tests)
+│   ├── test_strategy.py             # 3-Timeframe MTF strategy tests (4 tests)
+│   └── test_guardian.py             # Risk Guardian drawdown tests (3 tests)
 ├── utils/                           # Core Utilities & MT5 Bridge
 │   ├── logger.py                    # Colored terminal & rotating log file handlers
 │   ├── mt5_connector.py             # Resilient MetaTrader 5 connection manager
 │   └── status_writer.py             # Atomic status JSON state serialization
-├── bot_engine.py                    # Standalone algorithmic trading engine loop
+├── bot_engine.py                    # Multi-tenant algorithmic trading execution engine
 ├── desktop_app.py                   # PyWebView native Windows desktop launcher
-├── config.py                        # Centralized configuration manager
-├── test_loss_lock.py                # Regression test suite for risk & guardrails
+├── test_loss_lock.py                # Comprehensive loss protection & partial TP tests (19 tests)
 ├── requirements.txt                 # Python dependencies
 └── .env.example                     # Environment variables configuration template
 ```
@@ -305,7 +349,7 @@ Copy `.env.example` to `.env` in the root directory (or let `desktop_app.py` aut
 # ── Trading Mode ─────────────────────────────────────────────
 # Set to true for safe virtual paper simulation; false for real MT5 execution
 PAPER_TRADING=true
-BYPASS_NEWS_FILTER=true
+BYPASS_NEWS_FILTER=false
 
 # ── Risk Parameters ──────────────────────────────────────────
 RISK_PERCENT=1.0
@@ -370,24 +414,38 @@ Open **[http://localhost:5173](http://localhost:5173)** in your browser.
 
 ## 🧪 Testing & Quality Assurance
 
-Run the comprehensive test suite to verify machine learning models, VIF pruning, and safety guardrails:
+Run the comprehensive test suite to verify machine learning models, VIF pruning, partial profit banking, and risk safeguards:
 
 ```powershell
-# Run Random Forest, Triple-Pruning & VIF tests
-pytest tests/test_rf_filter.py -q
-
-# Run Engine, Strategy, and Guardian tests
-pytest tests/test_engine.py tests/test_strategy.py tests/test_guardian.py -q
-
-# Run Risk Engine, Breakeven & Loss Lock tests
+# Run Comprehensive Loss Protection & Partial TP Suite (19 tests)
 python test_loss_lock.py
+
+# Run Pytest Suite with PYTHONPATH set (24 tests)
+$env:PYTHONPATH="."; pytest tests/test_rf_filter.py tests/test_news_filter.py tests/test_engine.py tests/test_strategy.py tests/test_guardian.py -q
 ```
 
-### Verified Test Suite Results:
-* `tests/test_rf_filter.py`: **8 passed** (Pairwise pruning, Recursive VIF, Gini MDI, Cost-Complexity, Decision thresholding)
-* `tests/test_engine.py`, `test_strategy.py`, `test_guardian.py`: **11 passed** (3-TF alignment, pullback confirmation, session validation)
-* `test_loss_lock.py`: **14 passed** (RSI oversold/overbought guards, 0.5x ATR breakeven, 24h loss locks, profit targets)
-* **Total: 33 / 33 tests passing (100% clean)**
+### Verified Test Suite Results (43 / 43 Passed — 100% Clean):
+* `test_loss_lock.py`: **19 passed**
+  * Scale-out partial take-profit (50% lot close & free-runner breakeven)
+  * RSI oversold/overbought directional veto guards
+  * 24-hour loss lock expiration and persistence
+  * Daily profit lock targets
+* `tests/test_rf_filter.py`: **8 passed**
+  * Pairwise collinearity pruning ($|r| \ge 0.88$)
+  * Recursive Variance Inflation Factor (VIF $\le 10.0$)
+  * Gini MDI feature importance pruning
+  * Cost-complexity pruning ($\alpha = 0.001$)
+* `tests/test_news_filter.py`: **5 passed**
+  * Live ForexFactory calendar feed ingestion
+  * NFP, FOMC, CPI blackout buffer windows
+  * Configurable volatility blackout windows
+* `tests/test_engine.py`: **4 passed**
+  * MT5 IPC bridge order dispatch and state transitions
+* `tests/test_strategy.py`: **4 passed**
+  * 3-timeframe trend alignment and pullback detection
+* `tests/test_guardian.py`: **3 passed**
+  * Real-time drawdown calculation and circuit breaker trip
+* **Total: 43 / 43 Tests Passing (100% Clean)**
 
 ---
 
