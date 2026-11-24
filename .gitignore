@@ -22,6 +22,8 @@ logs/
 database/nur_trading.db
 command.txt
 trades.csv
+reports/*.xlsx
+reports/*.csv
 
 # Node / Frontend
 node_modules/

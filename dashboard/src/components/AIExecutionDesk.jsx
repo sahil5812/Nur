@@ -1,6 +1,7 @@
 // src/components/AIExecutionDesk.jsx — Integrated AI Execution & Risk Desk
 import React, { useState, useEffect, useMemo } from 'react';
 import { getApiBase } from '../config';
+import { formatCurrency } from '../utils/currency';
 
 export default function AIExecutionDesk({ token, engine, stats }) {
   const [rfMeta, setRfMeta] = useState(null);
@@ -436,7 +437,7 @@ export default function AIExecutionDesk({ token, engine, stats }) {
                       <td className="mono">{pos.volume}</td>
                       <td className="mono">${pos.price_open?.toFixed(2) || '—'}</td>
                       <td className={`mono ${pnl >= 0 ? 'positive' : 'negative'}`} style={{ fontWeight: 500 }}>
-                        {pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`}
+                        {formatCurrency(pnl, stats?.currency, true)}
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <button

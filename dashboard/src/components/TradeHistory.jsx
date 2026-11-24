@@ -1,7 +1,8 @@
 // src/components/TradeHistory.jsx — Precision Execution Log
 import React from 'react';
+import { formatCurrency } from '../utils/currency';
 
-export default function TradeHistory({ trades = [], total = 0, loading = false }) {
+export default function TradeHistory({ trades = [], total = 0, loading = false, currency = 'INR' }) {
   return (
     <div className="card">
       <div className="section-header">
@@ -64,7 +65,7 @@ export default function TradeHistory({ trades = [], total = 0, loading = false }
                     </td>
                     <td className={`mono ${pnl > 0 ? 'positive' : pnl < 0 ? 'negative' : ''}`}
                         style={{ fontWeight: 500 }}>
-                      {pnl > 0 ? '+' : ''}${pnl.toFixed(2)}
+                      {formatCurrency(pnl, currency, true)}
                     </td>
                     <td style={{ fontSize: 11, color: 'var(--text-3)' }}>{t.exit_reason ?? '—'}</td>
                     <td>

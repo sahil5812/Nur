@@ -129,11 +129,34 @@ def shutdown():
 def load_stats_with_balance(user_id: int):
     base_stats = dict(load_stats(user_id=user_id))
     import MetaTrader5 as mt5
-    balance = 100000.0
+    balance = 5000.0
+    equity = 5000.0
+    currency = "INR" if getattr(config, "DAILY_LOSS_LIMIT", -50) <= -200 else "USD"
     if mt5.initialize():
         acc = mt5.account_info()
         if acc:
             balance = acc.balance
+            equity = acc.equity
+            currency = getattr(acc, "currency", currency) or currency
+
+    curr_upper = currency.upper()
+    curr_symbols = {
+        "INR": "₹",
+        "USD": "$",
+        "EUR": "€",
+        "GBP": "£",
+        "JPY": "¥",
+        "AED": "AED ",
+        "CAD": "C$",
+        "AUD": "A$",
+        "CHF": "CHF ",
+        "SGD": "S$",
+    }
+    symbol = curr_symbols.get(curr_upper, curr_upper + " ")
+    base_stats["currency"] = curr_upper
+    base_stats["currency_symbol"] = symbol
+    base_stats["daily_loss_limit"] = config.DAILY_LOSS_LIMIT
+    base_stats["daily_profit_target"] = config.DAILY_PROFIT_TARGET
 
     if config.PAPER_TRADING:
         # In Paper Trading, the realized balance is base balance + total_pnl!
@@ -155,10 +178,7 @@ def load_stats_with_balance(user_id: int):
         base_stats["equity"] = round(base_stats["balance"] + floating_pnl, 2)
     else:
         base_stats["balance"] = balance
-        if mt5.initialize():
-            acc = mt5.account_info()
-            if acc:
-                base_stats["equity"] = acc.equity
+        base_stats["equity"] = equity
 
     return base_stats
 

@@ -1,9 +1,11 @@
 // src/components/TerminalDock.jsx — Unified Tabbed Terminal Dock
 import React, { useState } from 'react';
+import { formatCurrency } from '../utils/currency';
 
-export default function TerminalDock({ trades = [], analyticsData, engine, loading = false }) {
+export default function TerminalDock({ trades = [], analyticsData, engine, loading = false, stats }) {
   const [activeTab, setActiveTab] = useState('history'); // 'history' | 'stream' | 'metrics'
 
+  const currency = stats?.currency || 'INR';
   const closedTrades = trades.filter(t => t.exit_time !== null && t.exit_time !== undefined);
   const summary = analyticsData?.summary;
   const bySession = analyticsData?.by_session ?? {};
@@ -89,7 +91,7 @@ export default function TerminalDock({ trades = [], analyticsData, engine, loadi
                         <td className="mono">${Number(t.entry_price || t.price_open || 0).toFixed(2)}</td>
                         <td className="mono">${Number(t.exit_price || t.price_close || 0).toFixed(2)}</td>
                         <td className={`mono ${pnl >= 0 ? 'positive' : 'negative'}`} style={{ textAlign: 'right', fontWeight: 500 }}>
-                          {pnl >= 0 ? `+$${pnl.toFixed(2)}` : `-$${Math.abs(pnl).toFixed(2)}`}
+                          {formatCurrency(pnl, currency, true)}
                         </td>
                       </tr>
                     );
@@ -123,7 +125,7 @@ export default function TerminalDock({ trades = [], analyticsData, engine, loadi
               <span className="stream-time mono">RISK</span>
               <span className="stream-badge ok">GUARD</span>
               <span className="stream-msg">
-                Daily max drawdown guard: $50.00 · Dynamic 1.5x ATR trailing stop enabled
+                Daily max drawdown guard: {formatCurrency(Math.abs(stats?.daily_loss_limit || 450), currency)} · Dynamic 1.5x ATR trailing stop enabled
               </span>
             </div>
             <div className="stream-row">
@@ -149,13 +151,13 @@ export default function TerminalDock({ trades = [], analyticsData, engine, loadi
 
             <div className="metric-box">
               <div className="metric-box-label">Avg Trade P&L</div>
-              <div className="metric-box-val mono">{summary?.avg_pnl !== undefined ? `$${summary.avg_pnl.toFixed(2)}` : '$0.00'}</div>
+              <div className="metric-box-val mono">{summary?.avg_pnl !== undefined ? formatCurrency(summary.avg_pnl, currency) : formatCurrency(0, currency)}</div>
               <div className="metric-box-sub">Expectancy per trade</div>
             </div>
 
             <div className="metric-box">
               <div className="metric-box-label">Best Trade</div>
-              <div className="metric-box-val mono positive">{summary?.best !== undefined ? `+$${summary.best.toFixed(2)}` : '—'}</div>
+              <div className="metric-box-val mono positive">{summary?.best !== undefined ? formatCurrency(summary.best, currency, true) : '—'}</div>
               <div className="metric-box-sub">Peak execution profit</div>
             </div>
 
@@ -165,7 +167,7 @@ export default function TerminalDock({ trades = [], analyticsData, engine, loadi
               </div>
               <div className={`metric-box-val mono ${summary?.worst !== undefined && summary.worst < 0 ? 'negative' : 'positive'}`}>
                 {summary?.worst !== undefined 
-                  ? (summary.worst < 0 ? `-$${Math.abs(summary.worst).toFixed(2)}` : `+$${summary.worst.toFixed(2)}`) 
+                  ? formatCurrency(summary.worst, currency, true)
                   : '—'}
               </div>
               <div className="metric-box-sub">

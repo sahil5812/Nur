@@ -1,7 +1,9 @@
 // src/components/MarketRibbon.jsx — High-Density Institutional Ticker Ribbon
 import React from 'react';
+import { formatCurrency } from '../utils/currency';
 
 export default function MarketRibbon({ stats, engine, connected }) {
+  const currency = stats?.currency || 'INR';
   const balance = stats?.balance ?? 5000.0;
   const equity = stats?.equity ?? balance;
   const todayPnl = stats?.today_pnl ?? 0.0;
@@ -11,6 +13,7 @@ export default function MarketRibbon({ stats, engine, connected }) {
   const wins = stats?.wins ?? 0;
   const losses = stats?.losses ?? 0;
   const openPos = stats?.open_positions ?? 0;
+  const dailyGuard = Math.abs(stats?.daily_loss_limit || 450.0);
 
   const isUpToday = todayPnl > 0;
   const isDownToday = todayPnl < 0;
@@ -21,7 +24,7 @@ export default function MarketRibbon({ stats, engine, connected }) {
         {/* Metric 1: Account Balance */}
         <div className="ribbon-item">
           <span className="ribbon-label">Balance</span>
-          <span className="ribbon-val mono">${Number(balance).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="ribbon-val mono">{formatCurrency(balance, currency)}</span>
         </div>
 
         <div className="ribbon-divider" />
@@ -29,7 +32,7 @@ export default function MarketRibbon({ stats, engine, connected }) {
         {/* Metric 2: Account Equity */}
         <div className="ribbon-item">
           <span className="ribbon-label">Equity</span>
-          <span className="ribbon-val mono">${Number(equity).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="ribbon-val mono">{formatCurrency(equity, currency)}</span>
         </div>
 
         <div className="ribbon-divider" />
@@ -38,7 +41,7 @@ export default function MarketRibbon({ stats, engine, connected }) {
         <div className="ribbon-item">
           <span className="ribbon-label">Today P&L</span>
           <span className={`ribbon-val mono ${isUpToday ? 'positive' : isDownToday ? 'negative' : 'neutral'}`}>
-            {isUpToday ? '+' : ''}${todayPnl.toFixed(2)}
+            {formatCurrency(todayPnl, currency, true)}
           </span>
         </div>
 
@@ -48,7 +51,7 @@ export default function MarketRibbon({ stats, engine, connected }) {
         <div className="ribbon-item">
           <span className="ribbon-label">Total Realized</span>
           <span className={`ribbon-val mono ${totalPnl > 0 ? 'positive' : totalPnl < 0 ? 'negative' : 'neutral'}`}>
-            {totalPnl > 0 ? '+' : ''}${totalPnl.toFixed(2)}
+            {formatCurrency(totalPnl, currency, true)}
           </span>
         </div>
 
@@ -78,7 +81,7 @@ export default function MarketRibbon({ stats, engine, connected }) {
         <div className="ribbon-item">
           <span className="ribbon-label">Daily Guard</span>
           <span className="ribbon-val mono" style={{ color: 'var(--text-2)' }}>
-            $50.00 max <span className="ribbon-sub">(Safe)</span>
+            {formatCurrency(dailyGuard, currency)} max <span className="ribbon-sub">(Safe)</span>
           </span>
         </div>
       </div>

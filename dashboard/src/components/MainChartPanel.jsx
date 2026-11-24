@@ -4,6 +4,7 @@ import {
   AreaChart, Area, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine
 } from 'recharts';
+import { formatCurrency, getCurrencySymbol } from '../utils/currency';
 
 function MarketTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null;
@@ -64,10 +65,12 @@ function EquityTooltip({ active, payload, label }) {
   );
 }
 
-export default function MainChartPanel({ engine, equityData, marketChart, loading = false }) {
+export default function MainChartPanel({ engine, equityData, marketChart, loading = false, stats }) {
   const [activeTab, setActiveTab] = useState('market'); // 'market' | 'equity'
   const [timeframe, setTimeframe] = useState('M1');
 
+  const currency = stats?.currency || 'INR';
+  const baselineBalance = stats?.balance ?? 5000.0;
   const spotPrice = engine?.last_close ? Number(engine.last_close) : 4050.20;
   const ema200 = engine?.ema200 ? Number(engine.ema200) : 4065.50;
   const atr = engine?.atr ? Number(engine.atr) : 2.14;
@@ -181,13 +184,13 @@ export default function MainChartPanel({ engine, equityData, marketChart, loadin
           <div className="telemetry-cell">
             <span className="telemetry-label">Realized Net P&L</span>
             <span className={`telemetry-val mono ${isEquityUp ? 'positive' : 'negative'}`}>
-              {isEquityUp ? '+' : ''}${(equityData?.total_pnl ?? 0).toFixed(2)}
+              {formatCurrency(equityData?.total_pnl ?? 0, currency, true)}
             </span>
           </div>
 
           <div className="telemetry-cell">
             <span className="telemetry-label">Baseline Watermark</span>
-            <span className="telemetry-val mono">$5,000.00</span>
+            <span className="telemetry-val mono">{formatCurrency(baselineBalance, currency)}</span>
           </div>
 
           <div className="telemetry-cell">
@@ -250,7 +253,7 @@ export default function MainChartPanel({ engine, equityData, marketChart, loadin
         ) : (
           equityPoints.length === 0 ? (
             <div className="chart-empty-state">
-              <div className="empty-title">Baseline Capital: $5,000.00 Active</div>
+              <div className="empty-title">Baseline Capital: {formatCurrency(baselineBalance, currency)} Active</div>
               <div className="empty-sub">
                 Equity curve will record real-time trajectory as soon as closed trades complete.
               </div>

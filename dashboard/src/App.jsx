@@ -132,12 +132,14 @@ function DashboardView() {
               equityData={data?.equity} 
               marketChart={data?.chart} 
               loading={!data} 
+              stats={stats}
             />
             <TerminalDock 
               trades={data?.trades ?? []} 
               analyticsData={data?.analytics} 
               engine={engine} 
               loading={!data} 
+              stats={stats}
             />
           </div>
 
