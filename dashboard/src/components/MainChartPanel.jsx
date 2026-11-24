@@ -71,8 +71,8 @@ export default function MainChartPanel({ engine, equityData, marketChart, loadin
 
   const currency = stats?.currency || 'INR';
   const baselineBalance = stats?.balance ?? 5000.0;
-  const spotPrice = engine?.last_close ? Number(engine.last_close) : 4050.20;
-  const ema200 = engine?.ema200 ? Number(engine.ema200) : 4065.50;
+  const spotPrice = engine?.last_close ? Number(engine.last_close) : (marketChart?.current_price ? Number(marketChart.current_price) : 3565.20);
+  const ema200 = engine?.ema200 ? Number(engine.ema200) : (candleData[candleData.length - 1]?.ema || 3568.50);
   const atr = engine?.atr ? Number(engine.atr) : 2.14;
   const spread = engine?.spread !== undefined ? Number(engine.spread) : 0.20;
 
@@ -113,7 +113,7 @@ export default function MainChartPanel({ engine, equityData, marketChart, loadin
             className={`chart-tab-btn ${activeTab === 'market' ? 'active' : ''}`}
             onClick={() => setActiveTab('market')}
           >
-            Live Market (XAUUSD)
+            Live Market ({marketChart?.symbol || 'XAUUSDm'})
           </button>
           <button
             type="button"

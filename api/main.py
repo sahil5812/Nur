@@ -258,11 +258,12 @@ def equity(current_user: dict = Depends(get_current_user)):
 
 
 @app.get("/api/market_chart")
-def get_market_chart(symbol: str = "XAUUSD", timeframe: str = "M1", count: int = 40):
+def get_market_chart(symbol: str = None, timeframe: str = "M1", count: int = 40):
     """Returns recent candle data and EMA 200 for the live terminal chart."""
     candles = []
-    current_price = 4050.0
-    ema_val = 4065.0
+    target_symbol = symbol or getattr(config, "SYMBOL", "XAUUSDm")
+    current_price = 3565.0
+    ema_val = 3568.0
     
     try:
         import MetaTrader5 as mt5_chart
@@ -273,7 +274,21 @@ def get_market_chart(symbol: str = "XAUUSD", timeframe: str = "M1", count: int =
         }
         tf = tf_map.get(timeframe.upper(), mt5_chart.TIMEFRAME_M1)
         if mt5_chart.initialize():
-            rates = mt5_chart.copy_rates_from_pos(symbol, tf, 0, min(max(count, 15), 60))
+            resolved = target_symbol
+            candidates = [resolved]
+            if resolved.endswith("m"):
+                candidates.append(resolved[:-1])
+            else:
+                candidates.append(f"{resolved}m")
+
+            rates = None
+            for cand in candidates:
+                mt5_chart.symbol_select(cand, True)
+                rates = mt5_chart.copy_rates_from_pos(cand, tf, 0, min(max(count, 15), 60))
+                if rates is not None and len(rates) > 0:
+                    resolved = cand
+                    break
+
             if rates is not None and len(rates) > 0:
                 closes = [float(r["close"]) for r in rates]
                 current_price = closes[-1]
@@ -305,7 +320,7 @@ def get_market_chart(symbol: str = "XAUUSD", timeframe: str = "M1", count: int =
         pass
 
     return {
-        "symbol": symbol,
+        "symbol": resolved if 'resolved' in locals() else target_symbol,
         "timeframe": timeframe,
         "candles": candles,
         "current_price": current_price,
