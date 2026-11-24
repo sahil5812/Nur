@@ -12,6 +12,7 @@ import MarketRibbon from './components/MarketRibbon';
 import MainChartPanel from './components/MainChartPanel';
 import AIExecutionDesk from './components/AIExecutionDesk';
 import TerminalDock from './components/TerminalDock';
+import ErrorBoundary from './components/ErrorBoundary';
 import { getActiveAccount, getSavedAccounts, switchAccount, removeAccount, addNewAccount, autoRefreshToken } from './utils/auth';
 import { getApiBase } from './config';
 
@@ -175,23 +176,25 @@ function DashboardView() {
 
 export default function App() {
   return (
-    <Router>
-      <AuthProvider>
-        <Routes>
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/auth/callback" element={<AuthCallback />} />
-          <Route 
-            path="/" 
-            element={
-              <PrivateRoute>
-                <DashboardView />
-              </PrivateRoute>
-            } 
-          />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </AuthProvider>
-    </Router>
+    <ErrorBoundary>
+      <Router>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route 
+              path="/" 
+              element={
+                <PrivateRoute>
+                  <DashboardView />
+                </PrivateRoute>
+              } 
+            />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </ErrorBoundary>
   );
 }
