@@ -599,7 +599,8 @@ def main():
     # The splash HTML auto-polls /api/health and redirects once FastAPI is ready
     webview.start(
         storage_path=str(APPDATA_DIR / "webview_cache"),
-        private_mode=False
+        private_mode=False,
+        debug=True
     )
 
 if __name__ == "__main__":
