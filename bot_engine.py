@@ -191,6 +191,15 @@ def _lazy_init():
 
     # ─── Constants ────────────────────────────────────────────
     SYMBOL       = config.SYMBOL
+    try:
+        s_info = mt5.symbol_info(SYMBOL)
+        if s_info is None:
+            alt = SYMBOL[:-1] if SYMBOL.endswith("m") else f"{SYMBOL}m"
+            if mt5.symbol_info(alt) is not None:
+                SYMBOL = alt
+        mt5.symbol_select(SYMBOL, True)
+    except Exception:
+        pass
     M1_TF        = mt5.TIMEFRAME_M1
     H1_TF        = mt5.TIMEFRAME_H1
     H4_TF        = mt5.TIMEFRAME_H4

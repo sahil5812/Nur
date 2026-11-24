@@ -21,6 +21,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Query, Depends, HTTPException
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import jwt
 
@@ -160,6 +161,18 @@ def load_stats_with_balance(user_id: int):
                 base_stats["equity"] = acc.equity
 
     return base_stats
+
+
+@app.get("/api/export-excel")
+def export_excel():
+    """Generates and serves the latest Excel trading journal."""
+    from utils.excel_exporter import export_trades_to_excel
+    xlsx_path, _ = export_trades_to_excel()
+    return FileResponse(
+        path=str(xlsx_path),
+        filename="nur_trading_journal.xlsx",
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 
 @app.get("/api/stats")

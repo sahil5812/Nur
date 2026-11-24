@@ -235,3 +235,25 @@ def log_trade(
             int(is_paper), entry_time, exit_time, session,
         ))
     logger.debug(f"Trade logged for user {user_id}: {direction} {pnl:+.2f} [{exit_reason}]")
+
+    # Automatically persist trade to Excel & CSV journal
+    try:
+        from utils.excel_exporter import append_trade_to_journal
+        append_trade_to_journal({
+            "user_id": user_id,
+            "trade_id": trade_id,
+            "direction": direction,
+            "entry_price": entry_price,
+            "exit_price": exit_price,
+            "sl": sl,
+            "lot": lot,
+            "score": score,
+            "pnl": pnl,
+            "exit_reason": exit_reason,
+            "is_paper": is_paper,
+            "entry_time": entry_time,
+            "exit_time": exit_time,
+            "session": session,
+        })
+    except Exception as exc:
+        logger.debug(f"Excel journal update note: {exc}")
