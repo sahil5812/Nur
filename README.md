@@ -12,13 +12,17 @@
 
 **NUR** is an institutional-grade, event-driven algorithmic trading platform and quantitative execution terminal engineered specifically for **XAUUSD (Gold Spot)** on **MetaTrader 5 (MT5)**. The platform synthesizes multi-timeframe structural market analysis (H4 Macro Trend, H1 Directional Momentum, M1 Dynamic Cushion Scalp) with **Hierarchical Multi-Agent Reinforcement Learning (MARL)**, an **HMM Market Regime Router**, an advanced **Random Forest Meta-Filter with 4-Stage Pruning & Recursive VIF**, and an automated **Execution Desk featuring Scale-Out Partial TP, Kelly Conviction Sizing, and Live ForexFactory Economic News Guardrails**.
 
-The system features an ultra-responsive, dark-mode **Bloomberg/TradingView-inspired React terminal**, a native Windows desktop client (`PyWebView`), a multi-tenant SaaS backend with isolated risk profiles and frosted-glass account switching, and an interactive Telegram command center integrated with Google Gemini AI.
+The system features an ultra-responsive, dark-mode **Bloomberg/TradingView-inspired React terminal**, a native Windows desktop client (`PyWebView`), a multi-tenant SaaS backend with isolated risk profiles and frosted-glass account switching, and an automated Telegram command center for remote operations, trade notifications, and emergency risk controls.
 
 ---
 
-## 📊 Live Performance & Verification Track Record
+## 📊 Simulated Performance & Paper Trading Track Record
 
-Telemetry captured from live out-of-sample forward execution on MetaTrader 5 (Gold Spot XAUUSD):
+> [!WARNING]
+> **PAPER TRADING SIMULATION NOTICE — NOT REAL MONEY:**
+> All trade statistics, performance metrics, and telemetry data presented below were gathered strictly during **PAPER TRADING (Simulation Mode)** on MetaTrader 5 Demo environments. **This bot has been tested solely in paper trading simulation and NOT with real money.** Real-money execution carries distinct financial risks including unpredictable broker slippage, liquidity drying, spread widening during high volatility, and potential loss of invested capital. Past simulated performance does not guarantee future live trading results.
+
+Telemetry captured from live out-of-sample forward simulation on MetaTrader 5 (Gold Spot XAUUSD Demo):
 
 | Metric | Measured Value | Institutional Benchmark | Status |
 | :--- | :--- | :--- | :--- |
@@ -76,7 +80,7 @@ graph TD
     subgraph ClientInterfaces ["6. Institutional User Interfaces"]
         DesktopApp["Native Windows Desktop App (PyWebView + Auto-Shortcut)"]
         ReactUI["Bloomberg-Style React Terminal (Vite + Frosted Account Switcher)"]
-        TelegramBot["Telegram Remote Controller + Gemini NLP Chat"]
+        TelegramBot["Telegram Remote Controller (Alerts, PnL & Emergency Liquidation)"]
     end
 
     MT5 -->|Real-Time Ticks & OHLCV| MTF
@@ -372,7 +376,6 @@ MT5_SERVER=MetaQuotes-Demo
 # ── Telegram Control & Remote Alerts (Optional) ──────────────
 TELEGRAM_TOKEN=your_telegram_bot_token
 ALLOWED_CHAT_IDS=your_chat_id
-GEMINI_API_KEY=your_gemini_api_key
 
 # ── Authentication & Security ────────────────────────────────
 JWT_SECRET=super_secure_random_32_byte_jwt_secret_key_here
@@ -449,25 +452,30 @@ $env:PYTHONPATH="."; pytest tests/test_rf_filter.py tests/test_news_filter.py te
 
 ---
 
-## 📱 Telegram Remote Control & Gemini AI
+## 📱 Telegram Remote Control & Operations
 
-NUR includes a remote management interface via Telegram:
+NUR includes an automated remote management interface via Telegram, enabling traders and administrators to monitor live telemetry and execute immediate risk overrides:
 
 | Command | Action Description |
 | :--- | :--- |
-| `/start_trading` | Resumes automated trade execution |
-| `/stop` | Pauses execution and transitions engine to idle |
+| `/start_trading` | Resumes automated trade execution loop |
+| `/stop` | Pauses execution and safely transitions engine to idle |
 | `/status` | Live snapshot of price, EMA, RSI, regime, score, and active locks |
 | `/balance` | Displays account equity, balance, floating PnL, and daily stats |
 | `/positions` | Lists all active orders, entry prices, and trailing stops |
 | `/report` | Sends daily performance summary and win-rate analytics |
-| `/panic` | **Emergency Flatten**: Instantly closes all open positions |
+| `/panic` | **Emergency Flatten**: Instantly closes all open positions and pauses execution |
 
-* **Gemini AI NLP**: Users can send freeform natural language queries (e.g., *"What is our risk exposure right now?"* or *"Analyze the current gold trend"*) to receive immediate quantitative insights powered by Google Gemini.
+> [!NOTE]
+> All trade events (order execution, partial take-profit banking, breakeven clamping, and stop-loss exits) trigger instant push notifications directly to authorized Telegram chat IDs.
 
 ---
 
 ## ⚠️ Disclaimer & Risk Warning
+
+> [!IMPORTANT]
+> **STRICT PAPER TRADING / SIMULATION NOTICE:**
+> All algorithms, reinforcement learning models, and risk rules in this repository have been tested and verified **EXCLUSIVELY IN PAPER TRADING (SIMULATION) MODE on MetaTrader 5 Demo**. The system has **NOT been tested with real money**. Live real-money trading involves market slippage, broker liquidity limits, spread expansion during high-impact news, and capital risk. No real-money profitability or commercial performance is guaranteed.
 
 This trading system is developed for educational, quantitative research, and technical evaluation purposes only. Trading foreign exchange, precious metals (XAUUSD), and leveraged derivatives carries a high level of risk and may not be suitable for all investors. High leverage can work against you as well as for you.
 
