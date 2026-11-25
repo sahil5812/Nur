@@ -817,20 +817,50 @@ def _tick() -> None:
         try:
             tick = mt5.symbol_info_tick(SYMBOL)
             price = tick.bid if tick else None
-            u1 = _get_user_state(1)
+            primary_uid = active_users[0]["user_id"] if active_users else 4
+            u_main = _get_user_state(primary_uid)
+            stats_main = load_stats(user_id=primary_uid)
+            current_max = getattr(config, "MAX_TRADES_PER_DAY", MAX_TRADES_PER_DAY or 12)
+            limit_reached_flag = stats_main["today_trades"] >= current_max
+            ltt_main = u_main.get("last_trade_time")
+            req_cd_main = u_main.get("custom_cooldown", COOLDOWN_SECONDS or 30)
+            cd_left = max(0, int(req_cd_main - (time.time() - ltt_main))) if ltt_main else 0
+
+            active_state = u_main["state"]
+            if u_main.get("ticket") is not None:
+                active_state = STATE_IN_TRADE
+            elif limit_reached_flag:
+                active_state = STATE_LIMIT_REACHED
+            elif cd_left > 0:
+                active_state = STATE_COOLDOWN
+
+            now_dt = datetime.now()
+            midnight = (now_dt + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+            reset_secs = max(0, int((midnight - now_dt).total_seconds()))
+            rh = reset_secs // 3600
+            rm = (reset_secs % 3600) // 60
+            reset_str = f"{rh}h {rm}m (12:00 AM IST)"
+
             ema = globals().get("_current_ema", price)
             last_rf = globals().get("_last_rf_prob", 0.55)
+            regime_label = REGIME_LABELS.get(_current_regime, _current_regime) if REGIME_LABELS else str(_current_regime)
             write_status(
                 SYMBOL,
-                u1["state"],
+                active_state,
                 ema,
-                trend=u1["trend"],
+                trend=u_main["trend"],
                 last_close=price,
                 rf_prob=last_rf,
                 rf_approved=(last_rf >= 0.42),
-                h4_bias=globals().get("_last_h4_bias", "BULLISH"),
-                h1_trend=globals().get("_last_h1_trend", "BULLISH"),
-                regime=globals().get("_last_regime", "TRENDING"),
+                h4_bias=globals().get("_last_h4_bias", "BEARISH"),
+                h1_trend=globals().get("_last_h1_trend", "BEARISH"),
+                regime=regime_label,
+                today_trades=stats_main["today_trades"],
+                max_daily_trades=current_max,
+                limit_reached=limit_reached_flag,
+                cooldown_left=cd_left,
+                reset_seconds_left=reset_secs,
+                reset_time_str=reset_str,
             )
         except Exception:
             pass
@@ -1300,9 +1330,17 @@ def _tick() -> None:
         reset_str = f"{rh}h {rm}m (12:00 AM IST)"
 
         regime_label = REGIME_LABELS.get(_current_regime, _current_regime) if REGIME_LABELS else str(_current_regime)
+        active_state = u_main["state"]
+        if u_main.get("ticket") is not None:
+            active_state = STATE_IN_TRADE
+        elif limit_reached_flag:
+            active_state = STATE_LIMIT_REACHED
+        elif cd_left > 0:
+            active_state = STATE_COOLDOWN
+
         write_status(
             SYMBOL,
-            u_main["state"],
+            active_state,
             ema,
             trend=u_main["trend"],
             last_close=price,
@@ -1322,7 +1360,7 @@ def _tick() -> None:
             reset_seconds_left=reset_secs,
             reset_time_str=reset_str,
         )
-        shared_state.engine_state = u_main["state"]
+        shared_state.engine_state = active_state
     except Exception as e:
         if logger:
             logger.error(f"Status write error: {e}")
