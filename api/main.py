@@ -161,7 +161,7 @@ def load_stats_with_balance(user_id: int):
     base_stats["currency_symbol"] = symbol
     base_stats["daily_loss_limit"] = config.DAILY_LOSS_LIMIT
     base_stats["daily_profit_target"] = config.DAILY_PROFIT_TARGET
-    base_stats["max_daily_trades"] = getattr(config, "MAX_TRADES_PER_DAY", 5)
+    base_stats["max_daily_trades"] = getattr(config, "MAX_TRADES_PER_DAY", 12)
 
     if config.PAPER_TRADING:
         # In Paper Trading, the realized balance is base balance + total_pnl!

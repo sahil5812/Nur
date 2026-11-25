@@ -441,7 +441,7 @@ export default function AIExecutionDesk({ token, engine, stats }) {
       {/* ── Open Positions or Signal Scanner ── */}
       <div className="desk-subpanel" style={{ marginTop: 'auto' }}>
         {/* ── Daily Limit Reached Alert Banner ── */}
-        {(engine?.limit_reached || (stats?.today_trades >= (engine?.max_daily_trades || 5))) && (
+        {(engine?.limit_reached || (stats?.today_trades >= (engine?.max_daily_trades || 12))) && (
           <div className="limit-alert-card">
             <div className="limit-alert-header">
               <span className="limit-badge">🛑 Daily Trade Limit Reached</span>
@@ -450,16 +450,16 @@ export default function AIExecutionDesk({ token, engine, stats }) {
               </span>
             </div>
             <p className="limit-alert-desc">
-              Today's limit of {stats?.today_trades || 6}/{engine?.max_daily_trades || 5} trades reached. Algorithm is paused to preserve capital.
+              Today's limit of {stats?.today_trades || 0}/{engine?.max_daily_trades || 12} trades reached. Algorithm is paused to preserve capital.
             </p>
             <div className="limit-alert-actions">
               <button
                 type="button"
                 className="boost-limit-btn"
                 disabled={actionLoading}
-                onClick={() => handleBoostLimit(15)}
+                onClick={() => handleBoostLimit(20)}
               >
-                ⚡ Boost to 15 Trades
+                ⚡ Boost to 20 Trades
               </button>
               <button
                 type="button"
@@ -505,11 +505,11 @@ export default function AIExecutionDesk({ token, engine, stats }) {
               <span className="dot-green" />
               <span>Spread: 0.20 within limits</span>
             </div>
-            {(engine?.limit_reached || (stats?.today_trades >= (engine?.max_daily_trades || 5))) ? (
+            {(engine?.limit_reached || (stats?.today_trades >= (engine?.max_daily_trades || 12))) ? (
               <div className="radar-status-item">
                 <span className="dot-amber" />
                 <span style={{ color: 'var(--amber, #f59e0b)', fontWeight: 600 }}>
-                  Trading Paused: Daily limit ({stats?.today_trades || 0}/{engine?.max_daily_trades || 5}) reached
+                  Trading Paused: Daily limit ({stats?.today_trades || 0}/{engine?.max_daily_trades || 12}) reached
                 </span>
               </div>
             ) : (engine?.cooldown_left && engine.cooldown_left > 0) ? (

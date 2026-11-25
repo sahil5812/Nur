@@ -998,7 +998,7 @@ def _tick() -> None:
 
         # ── User-specific Daily Limits & Cooldown ─────────────
         stats = load_stats(user_id=user_id)
-        current_max_trades = getattr(config, "MAX_TRADES_PER_DAY", MAX_TRADES_PER_DAY or 5)
+        current_max_trades = getattr(config, "MAX_TRADES_PER_DAY", MAX_TRADES_PER_DAY or 12)
         is_limit_reached = stats["today_trades"] >= current_max_trades
         is_loss_locked = check_daily_lock(DAILY_LOSS_LIMIT, user_id=user_id)
         is_profit_locked = check_profit_lock(DAILY_PROFIT_TARGET, user_id=user_id)
@@ -1261,7 +1261,7 @@ def _tick() -> None:
         primary_uid = active_users[0]["user_id"] if active_users else 4
         u_main = _get_user_state(primary_uid)
         stats_main = load_stats(user_id=primary_uid)
-        current_max = getattr(config, "MAX_TRADES_PER_DAY", MAX_TRADES_PER_DAY or 5)
+        current_max = getattr(config, "MAX_TRADES_PER_DAY", MAX_TRADES_PER_DAY or 12)
         ltt_main = u_main.get("last_trade_time")
         cd_left = max(0, int(COOLDOWN_SECONDS - (time.time() - ltt_main))) if ltt_main else 0
         limit_reached_flag = stats_main["today_trades"] >= current_max
