@@ -14,7 +14,7 @@ Phase 2 additions over Phase 1:
 
 import time
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 # ─── Lazy-loaded module references (populated by _lazy_init) ──
 # These are set to None at module level and populated once main() runs.
@@ -43,9 +43,12 @@ logger = None
 trade_log = None
 
 # ─── State machine ────────────────────────────────────────────
-STATE_WAITING  = "WAITING"
-STATE_IN_TRADE = "IN_TRADE"
-STATE_COOLDOWN = "COOLDOWN"
+STATE_WAITING       = "WAITING"
+STATE_IN_TRADE      = "IN_TRADE"
+STATE_COOLDOWN      = "COOLDOWN"
+STATE_LIMIT_REACHED = "LIMIT_REACHED"
+STATE_DAILY_LOCKED  = "DAILY_LOSS_LOCKED"
+STATE_PROFIT_LOCKED = "PROFIT_LOCKED"
 TREND_NONE     = "NONE"
 TREND_BULLISH  = "BULLISH"
 TREND_BEARISH  = "BEARISH"
@@ -993,13 +996,31 @@ def _tick() -> None:
                 ustate["state"] = STATE_COOLDOWN
                 ustate["ticket"] = None
 
-        # ── User-specific Daily Limits ────────────────────────
+        # ── User-specific Daily Limits & Cooldown ─────────────
         stats = load_stats(user_id=user_id)
-        if stats["today_trades"] >= MAX_TRADES_PER_DAY:
-            continue
-        if check_daily_lock(DAILY_LOSS_LIMIT, user_id=user_id):
-            continue
-        if check_profit_lock(DAILY_PROFIT_TARGET, user_id=user_id):
+        current_max_trades = getattr(config, "MAX_TRADES_PER_DAY", MAX_TRADES_PER_DAY or 5)
+        is_limit_reached = stats["today_trades"] >= current_max_trades
+        is_loss_locked = check_daily_lock(DAILY_LOSS_LIMIT, user_id=user_id)
+        is_profit_locked = check_profit_lock(DAILY_PROFIT_TARGET, user_id=user_id)
+
+        ltt = ustate.get("last_trade_time")
+        cooldown_left = max(0, int(COOLDOWN_SECONDS - (time.time() - ltt))) if ltt else 0
+
+        # Maintain coherent state
+        if ustate.get("ticket") is not None:
+            ustate["state"] = STATE_IN_TRADE
+        elif is_limit_reached:
+            ustate["state"] = STATE_LIMIT_REACHED
+        elif is_loss_locked:
+            ustate["state"] = STATE_DAILY_LOCKED
+        elif is_profit_locked:
+            ustate["state"] = STATE_PROFIT_LOCKED
+        elif cooldown_left > 0:
+            ustate["state"] = STATE_COOLDOWN
+        elif ustate["state"] in (STATE_LIMIT_REACHED, STATE_DAILY_LOCKED, STATE_PROFIT_LOCKED, STATE_COOLDOWN):
+            ustate["state"] = STATE_WAITING
+
+        if is_limit_reached or is_loss_locked or is_profit_locked or cooldown_left > 0:
             continue
 
         # ── Live PnL check & Stop trailing for active user ────
@@ -1239,6 +1260,19 @@ def _tick() -> None:
     try:
         primary_uid = active_users[0]["user_id"] if active_users else 4
         u_main = _get_user_state(primary_uid)
+        stats_main = load_stats(user_id=primary_uid)
+        current_max = getattr(config, "MAX_TRADES_PER_DAY", MAX_TRADES_PER_DAY or 5)
+        ltt_main = u_main.get("last_trade_time")
+        cd_left = max(0, int(COOLDOWN_SECONDS - (time.time() - ltt_main))) if ltt_main else 0
+        limit_reached_flag = stats_main["today_trades"] >= current_max
+
+        now_dt = datetime.now()
+        midnight = (now_dt + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+        reset_secs = max(0, int((midnight - now_dt).total_seconds()))
+        rh = reset_secs // 3600
+        rm = (reset_secs % 3600) // 60
+        reset_str = f"{rh}h {rm}m (12:00 AM IST)"
+
         regime_label = REGIME_LABELS.get(_current_regime, _current_regime) if REGIME_LABELS else str(_current_regime)
         write_status(
             SYMBOL,
@@ -1255,10 +1289,17 @@ def _tick() -> None:
             rsi=round(rsi, 1),
             atr=round(atr, 2),
             spread=round((tick.ask - tick.bid), 2) if tick else 0.20,
+            today_trades=stats_main["today_trades"],
+            max_daily_trades=current_max,
+            limit_reached=limit_reached_flag,
+            cooldown_left=cd_left,
+            reset_seconds_left=reset_secs,
+            reset_time_str=reset_str,
         )
         shared_state.engine_state = u_main["state"]
-    except Exception:
-        pass
+    except Exception as e:
+        if logger:
+            logger.error(f"Status write error: {e}")
 
     time.sleep(SLEEP_TIME)
 

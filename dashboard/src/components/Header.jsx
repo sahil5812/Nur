@@ -20,6 +20,30 @@ export default function Header({
   const spread = engine?.spread !== undefined ? Number(engine.spread).toFixed(2) : '0.20';
   const state = engine?.state || 'Running';
 
+  // Determine state display and styling
+  let statusClass = running ? '' : 'stopped';
+  let statusText = running ? state : 'Stopped';
+
+  if (running) {
+    if (engine?.state === 'LIMIT_REACHED' || engine?.limit_reached) {
+      statusClass = 'limit-reached';
+      statusText = `Limit Reached (${engine?.reset_time_str ? engine.reset_time_str.split(' ')[0] : 'Midnight'})`;
+    } else if (engine?.state === 'COOLDOWN' || (engine?.cooldown_left && engine.cooldown_left > 0)) {
+      statusClass = 'cooldown';
+      statusText = `Cooldown (${engine?.cooldown_left || 0}s)`;
+    } else if (engine?.state === 'DAILY_LOSS_LOCKED') {
+      statusClass = 'stopped';
+      statusText = 'Loss Locked';
+    } else if (engine?.state === 'PROFIT_LOCKED') {
+      statusClass = 'limit-reached';
+      statusText = 'Target Reached';
+    } else if (engine?.state === 'WAITING') {
+      statusText = 'Waiting';
+    } else if (engine?.state === 'IN_TRADE') {
+      statusText = 'In Trade';
+    }
+  }
+
   const activeAccount = accounts.find(acc => acc.email === activeEmail);
   const dropdownRef = useRef(null);
 
@@ -70,9 +94,12 @@ export default function Header({
           <span>{connected ? 'Live' : 'Offline'}</span>
         </div>
 
-        <div className={`status-pill ${running ? '' : 'stopped'}`}>
+        <div 
+          className={`status-pill ${statusClass}`}
+          title={engine?.limit_reached ? `Daily limit reached. Resets at ${engine?.reset_time_str || '12:00 AM IST'}` : undefined}
+        >
           <span className="status-dot" />
-          <span>{running ? state : 'Stopped'}</span>
+          <span>{statusText}</span>
         </div>
 
         {activeAccount && (

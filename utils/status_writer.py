@@ -20,6 +20,13 @@ def write_status(
     rsi: float | None = None,
     atr: float | None = None,
     spread: float | None = None,
+    today_trades: int | None = None,
+    max_daily_trades: int | None = None,
+    limit_reached: bool | None = None,
+    cooldown_left: int | None = None,
+    reset_seconds_left: int | None = None,
+    reset_time_str: str | None = None,
+    **extra,
 ):
     payload = {
         "market": market,
@@ -49,6 +56,21 @@ def write_status(
         payload["atr"] = round(float(atr), 2)
     if spread is not None:
         payload["spread"] = round(float(spread), 2)
+    if today_trades is not None:
+        payload["today_trades"] = int(today_trades)
+    if max_daily_trades is not None:
+        payload["max_daily_trades"] = int(max_daily_trades)
+    if limit_reached is not None:
+        payload["limit_reached"] = bool(limit_reached)
+    if cooldown_left is not None:
+        payload["cooldown_left"] = max(0, int(cooldown_left))
+    if reset_seconds_left is not None:
+        payload["reset_seconds_left"] = max(0, int(reset_seconds_left))
+    if reset_time_str is not None:
+        payload["reset_time_str"] = str(reset_time_str)
+    for k, v in extra.items():
+        if v is not None:
+            payload[k] = v
 
     STATUS_FILE.parent.mkdir(exist_ok=True)
     STATUS_FILE.write_text(json.dumps(payload, indent=2))

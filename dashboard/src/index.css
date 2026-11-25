@@ -188,6 +188,18 @@ body {
   color: var(--red);
 }
 
+.status-pill.limit-reached {
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.4);
+  background-color: rgba(245, 158, 11, 0.1);
+}
+
+.status-pill.cooldown {
+  color: #06b6d4;
+  border-color: rgba(6, 182, 212, 0.4);
+  background-color: rgba(6, 182, 212, 0.1);
+}
+
 .status-dot, .live-dot {
   width: 6px;
   height: 6px;
@@ -711,6 +723,156 @@ body {
   border-radius: 50%;
   background-color: var(--accent);
   animation: pulse-dot 1.5s ease infinite;
+}
+
+.dot-amber {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+}
+
+.dot-cyan {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #06b6d4;
+  box-shadow: 0 0 6px rgba(6, 182, 212, 0.6);
+}
+
+/* ── Limit & Cooldown Desk Banners ── */
+.limit-alert-card {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: var(--radius-md, 6px);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.limit-alert-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.limit-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.limit-time-tag {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.limit-alert-desc {
+  font-size: 11px;
+  color: var(--text-2, #a1a1aa);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.limit-alert-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.boost-limit-btn {
+  flex: 1;
+  padding: 6px 10px;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  color: #fbbf24;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.boost-limit-btn:hover:not(:disabled) {
+  background: rgba(245, 158, 11, 0.35);
+  border-color: #f59e0b;
+  color: #fff;
+}
+
+.reset-count-btn {
+  flex: 1;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  color: var(--text-1, #e4e4e7);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.reset-count-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.cooldown-alert-card {
+  background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.35);
+  border-radius: var(--radius-md, 6px);
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cooldown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cooldown-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #06b6d4;
+  text-transform: uppercase;
+}
+
+.cooldown-timer {
+  font-size: 11px;
+  font-weight: 600;
+  color: #22d3ee;
+}
+
+.cooldown-progress-bar {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cooldown-progress-fill {
+  height: 100%;
+  background: #06b6d4;
+  transition: width 0.3s ease;
+}
+
+.cooldown-note {
+  font-size: 10px;
+  color: var(--text-3, #71717a);
 }
 
 /* ── Terminal Dock ── */

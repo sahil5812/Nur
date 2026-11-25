@@ -74,6 +74,10 @@ class RiskUpdateSchema(BaseModel):
     risk_multiplier: float = Field(..., ge=0.1, le=10.0)
 
 
+class TradeLimitSchema(BaseModel):
+    limit: int = Field(..., ge=1, le=100)
+
+
 class ForceTradeRequest(BaseModel):
     tenant_id: str | None = None
     direction: str  # 'BUY' or 'SELL'
@@ -157,6 +161,7 @@ def load_stats_with_balance(user_id: int):
     base_stats["currency_symbol"] = symbol
     base_stats["daily_loss_limit"] = config.DAILY_LOSS_LIMIT
     base_stats["daily_profit_target"] = config.DAILY_PROFIT_TARGET
+    base_stats["max_daily_trades"] = getattr(config, "MAX_TRADES_PER_DAY", 5)
 
     if config.PAPER_TRADING:
         # In Paper Trading, the realized balance is base balance + total_pnl!
@@ -520,6 +525,57 @@ def update_risk_config(data: RiskUpdateSchema, current_user: dict = Depends(get_
         with conn:
             conn.execute("UPDATE users SET risk_multiplier = ? WHERE id = ?", (data.risk_multiplier, user_id))
         return {"status": "success", "risk_multiplier": data.risk_multiplier}
+    except Exception as exc:
+        return {"status": "error", "message": str(exc)}
+    finally:
+        conn.close()
+
+
+@app.post("/api/trade_limit")
+def update_trade_limit(data: TradeLimitSchema, current_user: dict = Depends(get_current_user)):
+    """Dynamically increases/sets MAX_TRADES_PER_DAY across memory and environment."""
+    config.MAX_TRADES_PER_DAY = data.limit
+    try:
+        import bot_engine
+        bot_engine.MAX_TRADES_PER_DAY = data.limit
+    except Exception:
+        pass
+
+    # Persist to .env file if present
+    try:
+        env_path = getattr(config, "_ENV_PATH", Path(".env"))
+        if env_path and Path(env_path).exists():
+            content = Path(env_path).read_text(encoding="utf-8")
+            import re
+            if re.search(r"^MAX_TRADES_PER_DAY=.*", content, flags=re.MULTILINE):
+                new_content = re.sub(r"^MAX_TRADES_PER_DAY=.*", f"MAX_TRADES_PER_DAY={data.limit}", content, flags=re.MULTILINE)
+            else:
+                new_content = content + f"\nMAX_TRADES_PER_DAY={data.limit}\n"
+            Path(env_path).write_text(new_content, encoding="utf-8")
+    except Exception:
+        pass
+
+    force_update_event.set()
+    return {"status": "success", "max_trades_per_day": data.limit}
+
+
+@app.post("/api/reset_daily_trades")
+def reset_daily_trades(current_user: dict = Depends(get_current_user)):
+    """Resets today's executed trades to 0 and unlocks the state immediately."""
+    user_id = current_user["id"]
+    conn = _raw_conn()
+    try:
+        with conn:
+            conn.execute("UPDATE bot_stats SET today_trades = 0, trading_locked = 0 WHERE user_id = ?", (user_id,))
+        try:
+            import bot_engine
+            ustate = bot_engine._get_user_state(user_id)
+            if ustate.get("state") in ("LIMIT_REACHED", "DAILY_LOSS_LOCKED"):
+                ustate["state"] = bot_engine.STATE_WAITING
+        except Exception:
+            pass
+        force_update_event.set()
+        return {"status": "success", "message": "Daily trade count reset to 0"}
     except Exception as exc:
         return {"status": "error", "message": str(exc)}
     finally:

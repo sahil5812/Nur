@@ -185,6 +185,57 @@ export default function AIExecutionDesk({ token, engine, stats }) {
     }
   };
 
+  const handleBoostLimit = async (newLimit = 15) => {
+    setActionLoading(true);
+    try {
+      const base = getApiBase();
+      const headers = { 'Content-Type': 'application/json' };
+      const authToken = token || localStorage.getItem('token');
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+      const res = await fetch(`${base}/api/trade_limit`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ limit: newLimit })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setToast({ type: 'success', msg: `Daily trade limit increased to ${newLimit}!` });
+      } else {
+        setToast({ type: 'error', msg: data.detail || 'Failed to update trade limit.' });
+      }
+    } catch (e) {
+      setToast({ type: 'error', msg: `Error: ${e.message}` });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleResetDailyCount = async () => {
+    setActionLoading(true);
+    try {
+      const base = getApiBase();
+      const headers = { 'Content-Type': 'application/json' };
+      const authToken = token || localStorage.getItem('token');
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+      const res = await fetch(`${base}/api/reset_daily_trades`, {
+        method: 'POST',
+        headers
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setToast({ type: 'success', msg: "Today's trade count reset to 0. Bot resumed!" });
+      } else {
+        setToast({ type: 'error', msg: data.detail || 'Failed to reset daily count.' });
+      }
+    } catch (e) {
+      setToast({ type: 'error', msg: `Error: ${e.message}` });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="card desk-card">
       {/* ── Desk Header ── */}
@@ -389,6 +440,56 @@ export default function AIExecutionDesk({ token, engine, stats }) {
 
       {/* ── Open Positions or Signal Scanner ── */}
       <div className="desk-subpanel" style={{ marginTop: 'auto' }}>
+        {/* ── Daily Limit Reached Alert Banner ── */}
+        {(engine?.limit_reached || (stats?.today_trades >= (engine?.max_daily_trades || 5))) && (
+          <div className="limit-alert-card">
+            <div className="limit-alert-header">
+              <span className="limit-badge">🛑 Daily Trade Limit Reached</span>
+              <span className="mono limit-time-tag">
+                Next trades: {engine?.reset_time_str || '12:00 AM IST'}
+              </span>
+            </div>
+            <p className="limit-alert-desc">
+              Today's limit of {stats?.today_trades || 6}/{engine?.max_daily_trades || 5} trades reached. Algorithm is paused to preserve capital.
+            </p>
+            <div className="limit-alert-actions">
+              <button
+                type="button"
+                className="boost-limit-btn"
+                disabled={actionLoading}
+                onClick={() => handleBoostLimit(15)}
+              >
+                ⚡ Boost to 15 Trades
+              </button>
+              <button
+                type="button"
+                className="reset-count-btn"
+                disabled={actionLoading}
+                onClick={handleResetDailyCount}
+              >
+                🔄 Reset Today's Count
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Post-Trade Cooldown Banner ── */}
+        {(engine?.state === 'COOLDOWN' || (engine?.cooldown_left && engine.cooldown_left > 0)) && !engine?.limit_reached && (
+          <div className="cooldown-alert-card">
+            <div className="cooldown-header">
+              <span className="cooldown-badge">⏳ Cooldown Active</span>
+              <span className="mono cooldown-timer">{engine?.cooldown_left || 0}s remaining</span>
+            </div>
+            <div className="cooldown-progress-bar">
+              <div 
+                className="cooldown-progress-fill" 
+                style={{ width: `${Math.min(100, Math.max(0, ((engine?.cooldown_left || 0) / 30) * 100))}%` }}
+              />
+            </div>
+            <span className="cooldown-note">Allowing volatility to settle before scanning next setup.</span>
+          </div>
+        )}
+
         <div style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span>Active Orders ({openPositions.length})</span>
           {openPositions.length > 0 && <span className="mono" style={{ color: 'var(--green)', fontSize: 10 }}>Trailing SL Active</span>}
@@ -404,10 +505,26 @@ export default function AIExecutionDesk({ token, engine, stats }) {
               <span className="dot-green" />
               <span>Spread: 0.20 within limits</span>
             </div>
-            <div className="radar-status-item">
-              <span className="dot-pulse" />
-              <span>Scanning M1 candle closure for setup</span>
-            </div>
+            {(engine?.limit_reached || (stats?.today_trades >= (engine?.max_daily_trades || 5))) ? (
+              <div className="radar-status-item">
+                <span className="dot-amber" />
+                <span style={{ color: 'var(--amber, #f59e0b)', fontWeight: 600 }}>
+                  Trading Paused: Daily limit ({stats?.today_trades || 0}/{engine?.max_daily_trades || 5}) reached
+                </span>
+              </div>
+            ) : (engine?.cooldown_left && engine.cooldown_left > 0) ? (
+              <div className="radar-status-item">
+                <span className="dot-cyan" />
+                <span style={{ color: 'var(--cyan, #06b6d4)', fontWeight: 600 }}>
+                  Cooldown: {engine.cooldown_left}s remaining before next scan
+                </span>
+              </div>
+            ) : (
+              <div className="radar-status-item">
+                <span className="dot-pulse" />
+                <span>Scanning M1 candle closure for setup</span>
+              </div>
+            )}
           </div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
