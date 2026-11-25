@@ -215,7 +215,7 @@ def _lazy_init():
     PULLBACK_ATR_MULT   = 3.0       # pullback detected when gap < atr * this
     ATR_MULTIPLIER      = 0.5
     TRAIL_ATR_MULT      = 1.2
-    SL_ATR_MULT         = 1.5
+    SL_ATR_MULT         = 1.8       # Upgraded from 1.5 to 1.8 for breathing room against M1 Gold noise
     RISK_PERCENT        = config.RISK_PERCENT
     DAILY_LOSS_LIMIT    = config.DAILY_LOSS_LIMIT
     DAILY_PROFIT_TARGET = config.DAILY_PROFIT_TARGET
@@ -246,16 +246,20 @@ def _get_user_state(user_id: int) -> dict:
             "entry_time": None,
             "ticket": None,
             "breakeven_done": False,
+            "custom_cooldown": 30,
+            "last_loss_price": 0.0,
+            "last_trade_pnl": 0.0,
         }
     return _user_states[user_id]
 
 
 def can_trade_again(user_id: int = 1) -> bool:
     ustate = _get_user_state(user_id)
-    ltt = ustate["last_trade_time"]
+    ltt = ustate.get("last_trade_time")
     if ltt is None:
         return True
-    return (time.time() - ltt) >= COOLDOWN_SECONDS
+    req_cd = ustate.get("custom_cooldown", COOLDOWN_SECONDS or 30)
+    return (time.time() - ltt) >= req_cd
 
 
 def get_positions():
@@ -459,6 +463,16 @@ def _handle_trade_closed(
     else:
         ustate["last_known_profit"] = 0.0
         ustate["last_trade_time"]   = time.time()
+        ustate["last_trade_pnl"]    = pnl
+        if pnl < 0:
+            # Smart Post-Loss Cooldown: 180s (3 minutes) to avoid chop whipsaws
+            ustate["custom_cooldown"] = 180
+            ustate["last_loss_price"] = ustate.get("entry_price", exit_price)
+            logger.info(f"User {user_name} trade closed with LOSS ({pnl:.2f}) → Extended 3-min cooldown active to prevent chop whipsaw.")
+        else:
+            # Win trade: standard 30s cooldown
+            ustate["custom_cooldown"] = COOLDOWN_SECONDS or 30
+            ustate["last_loss_price"] = 0.0
 
 
 def load_pending_commands(user_id: int) -> list[dict]:
@@ -1004,7 +1018,8 @@ def _tick() -> None:
         is_profit_locked = check_profit_lock(DAILY_PROFIT_TARGET, user_id=user_id)
 
         ltt = ustate.get("last_trade_time")
-        cooldown_left = max(0, int(COOLDOWN_SECONDS - (time.time() - ltt))) if ltt else 0
+        req_cd = ustate.get("custom_cooldown", COOLDOWN_SECONDS or 30)
+        cooldown_left = max(0, int(req_cd - (time.time() - ltt))) if ltt else 0
 
         # Maintain coherent state
         if ustate.get("ticket") is not None:
@@ -1130,12 +1145,17 @@ def _tick() -> None:
                     # Apply consolidation filter here to block trade entry only, not pullback detection
                     if abs(price - ema) < atr * ATR_MULTIPLIER:
                         continue
+                    # Anti-chop price memory guard: don't re-enter at the exact same level after a loss
+                    last_loss_p = ustate.get("last_loss_price", 0.0)
+                    if last_loss_p > 0 and abs(price - last_loss_p) < (atr * 0.5):
+                        continue
                     score, reasons = calculate_score(
                         True, ustate["pullback_seen"], atr, price, ema, True,
                         rsi=rsi, macd_line=macd_l, macd_signal=macd_s, direction="BUY"
                     )
-                    logger.info(f"User {user['name']} BUY score={score}/{regime_score_threshold} | {reasons}")
-                    if score >= 60 and score >= regime_score_threshold:
+                    min_req_score = max(int(getattr(config, "MIN_SCORE_TO_TRADE", 75)), regime_score_threshold)
+                    logger.info(f"User {user['name']} BUY score={score}/{min_req_score} | {reasons}")
+                    if score >= min_req_score:
                         # ── Random Forest Meta-Filter Evaluation ──
                         rf_prob = 0.50
                         if _rf_filter is not None and getattr(_rf_filter, "is_fitted", False):
@@ -1160,12 +1180,17 @@ def _tick() -> None:
                     # Apply consolidation filter here to block trade entry only, not pullback detection
                     if abs(price - ema) < atr * ATR_MULTIPLIER:
                         continue
+                    # Anti-chop price memory guard: don't re-enter at the exact same level after a loss
+                    last_loss_p = ustate.get("last_loss_price", 0.0)
+                    if last_loss_p > 0 and abs(price - last_loss_p) < (atr * 0.5):
+                        continue
                     score, reasons = calculate_score(
                         True, ustate["pullback_seen"], atr, price, ema, True,
                         rsi=rsi, macd_line=macd_l, macd_signal=macd_s, direction="SELL"
                     )
-                    logger.info(f"User {user['name']} SELL score={score}/{regime_score_threshold} | {reasons}")
-                    if score >= 60 and score >= regime_score_threshold:
+                    min_req_score = max(int(getattr(config, "MIN_SCORE_TO_TRADE", 75)), regime_score_threshold)
+                    logger.info(f"User {user['name']} SELL score={score}/{min_req_score} | {reasons}")
+                    if score >= min_req_score:
                         # ── Random Forest Meta-Filter Evaluation ──
                         rf_prob = 0.50
                         if _rf_filter is not None and getattr(_rf_filter, "is_fitted", False):
@@ -1263,7 +1288,8 @@ def _tick() -> None:
         stats_main = load_stats(user_id=primary_uid)
         current_max = getattr(config, "MAX_TRADES_PER_DAY", MAX_TRADES_PER_DAY or 12)
         ltt_main = u_main.get("last_trade_time")
-        cd_left = max(0, int(COOLDOWN_SECONDS - (time.time() - ltt_main))) if ltt_main else 0
+        req_cd_main = u_main.get("custom_cooldown", COOLDOWN_SECONDS or 30)
+        cd_left = max(0, int(req_cd_main - (time.time() - ltt_main))) if ltt_main else 0
         limit_reached_flag = stats_main["today_trades"] >= current_max
 
         now_dt = datetime.now()
