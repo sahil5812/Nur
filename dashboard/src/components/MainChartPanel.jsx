@@ -75,6 +75,7 @@ export default function MainChartPanel({ engine, equityData, marketChart, loadin
   const ema200 = engine?.ema200 ? Number(engine.ema200) : 3568.50;
   const atr = engine?.atr ? Number(engine.atr) : 2.14;
   const spread = engine?.spread !== undefined ? Number(engine.spread) : 0.20;
+  const rsi = engine?.rsi !== undefined && engine?.rsi !== null ? Number(engine.rsi) : null;
 
   // Real or synthetic candle stream for live chart
   const candleData = useMemo(() => {
@@ -155,6 +156,35 @@ export default function MainChartPanel({ engine, equityData, marketChart, loadin
             <span className="telemetry-label">200 EMA</span>
             <span className="telemetry-val mono" style={{ color: '#38bdf8' }}>
               ${ema200.toFixed(2)}
+            </span>
+          </div>
+
+          <div className="telemetry-cell">
+            <span className="telemetry-label">RSI (14)</span>
+            <span 
+              className="telemetry-val mono" 
+              style={{ 
+                color: rsi !== null 
+                  ? (rsi < 36 ? 'var(--red)' : (rsi > 64 ? '#c084fc' : 'var(--green)')) 
+                  : 'var(--text-1)',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+              title={rsi !== null ? (rsi < 36 ? 'Oversold (<36) — SELL blocked' : (rsi > 64 ? 'Overbought (>64) — BUY blocked' : 'Normal Momentum')) : 'RSI Momentum'}
+            >
+              {rsi !== null ? rsi.toFixed(1) : '—'}
+              {rsi !== null && rsi < 36 && (
+                <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'rgba(239, 68, 68, 0.2)', color: 'var(--red)' }}>
+                  Oversold
+                </span>
+              )}
+              {rsi !== null && rsi > 64 && (
+                <span style={{ fontSize: 9, padding: '1px 4px', borderRadius: 3, background: 'rgba(192, 132, 252, 0.2)', color: '#c084fc' }}>
+                  Overbought
+                </span>
+              )}
             </span>
           </div>
 

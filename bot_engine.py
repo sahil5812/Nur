@@ -855,6 +855,7 @@ def _tick() -> None:
                 h4_bias=globals().get("_last_h4_bias", "BEARISH"),
                 h1_trend=globals().get("_last_h1_trend", "BEARISH"),
                 regime=regime_label,
+                rsi=round(globals().get("_last_rsi", 50.0), 1),
                 today_trades=stats_main["today_trades"],
                 max_daily_trades=current_max,
                 limit_reached=limit_reached_flag,
@@ -914,6 +915,7 @@ def _tick() -> None:
 
     # ── RSI + MACD (Phase 2) ──────────────────────────────────
     rsi              = calculate_rsi(closes, period=14)
+    globals()["_last_rsi"] = rsi
     macd_l, macd_s, _ = calculate_macd(closes)
 
     # ── Regime detection (Phase 2) ────────────────────────────

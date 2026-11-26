@@ -328,7 +328,7 @@ export default function AIExecutionDesk({ token, engine, stats }) {
       </div>
 
       {/* ── Multi-Timeframe Alignment Radar ── */}
-      <div className="radar-grid">
+      <div className="radar-grid" style={{ gridTemplateColumns: 'repeat(5, 1fr)' }}>
         <div className="radar-cell">
           <div className="radar-label">H4 Bias</div>
           <div className={`radar-val ${h4Bias.includes('BULL') ? 'positive' : (h4Bias.includes('BEAR') ? 'negative' : 'neutral')}`}>
@@ -347,6 +347,20 @@ export default function AIExecutionDesk({ token, engine, stats }) {
           <div className="radar-label">M1 Entry Z</div>
           <div className="radar-val mono" style={{ color: 'var(--accent)' }}>
             {zM1}
+          </div>
+        </div>
+
+        <div className="radar-cell">
+          <div className="radar-label">RSI (14)</div>
+          <div 
+            className="radar-val mono" 
+            style={{ 
+              color: engine?.rsi !== undefined && engine?.rsi !== null 
+                ? (engine.rsi < 36 ? 'var(--red)' : (engine.rsi > 64 ? '#c084fc' : 'var(--green)')) 
+                : 'var(--text-1)' 
+            }}
+          >
+            {engine?.rsi !== undefined && engine?.rsi !== null ? Number(engine.rsi).toFixed(1) : '—'}
           </div>
         </div>
 
