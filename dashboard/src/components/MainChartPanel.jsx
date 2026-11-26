@@ -11,26 +11,26 @@ function MarketTooltip({ active, payload, label }) {
   const d = payload[0].payload;
   return (
     <div style={{
-      backgroundColor: 'var(--bg-card)',
-      border: '1px solid var(--border)',
+      backgroundColor: '#f9f6ee',
+      border: '1px solid #c8a96e',
       borderRadius: 'var(--radius-sm)',
       padding: '8px 12px',
       fontSize: 11,
-      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)'
+      boxShadow: '0 8px 24px rgba(70, 50, 20, 0.18)'
     }}>
-      <div style={{ color: 'var(--text-3)', marginBottom: 4 }}>
+      <div style={{ color: '#7c6e57', marginBottom: 4 }}>
         {d.time || label}
       </div>
-      <div style={{ color: 'var(--text-1)', fontWeight: 600 }} className="mono">
+      <div style={{ color: '#1e1b16', fontWeight: 600 }} className="mono">
         Price: ${Number(d.close || d.price).toFixed(2)}
       </div>
       {d.ema && (
-        <div style={{ color: '#38bdf8', fontSize: 10, marginTop: 2 }} className="mono">
+        <div style={{ color: '#a67c38', fontSize: 10, marginTop: 2 }} className="mono">
           EMA(200): ${Number(d.ema).toFixed(2)}
         </div>
       )}
       {d.high && (
-        <div style={{ color: 'var(--text-3)', fontSize: 10, marginTop: 2 }} className="mono">
+        <div style={{ color: '#7c6e57', fontSize: 10, marginTop: 2 }} className="mono">
           H: ${Number(d.high).toFixed(2)} · L: ${Number(d.low).toFixed(2)}
         </div>
       )}
@@ -43,21 +43,21 @@ function EquityTooltip({ active, payload, label }) {
   const d = payload[0].payload;
   return (
     <div style={{
-      backgroundColor: 'var(--bg-card)',
-      border: '1px solid var(--border)',
+      backgroundColor: '#f9f6ee',
+      border: '1px solid #c8a96e',
       borderRadius: 'var(--radius-sm)',
       padding: '8px 12px',
       fontSize: 11,
-      boxShadow: '0 8px 24px rgba(0, 0, 0, 0.6)'
+      boxShadow: '0 8px 24px rgba(70, 50, 20, 0.18)'
     }}>
-      <div style={{ color: 'var(--text-3)', marginBottom: 4 }}>
+      <div style={{ color: '#7c6e57', marginBottom: 4 }}>
         {d.time ? new Date(d.time).toLocaleTimeString() : label}
       </div>
       <div style={{ color: d.equity >= 0 ? 'var(--green)' : 'var(--red)', fontWeight: 600 }} className="mono">
         Cumulative: ${d.equity?.toFixed(2)}
       </div>
       {d.pnl !== undefined && (
-        <div style={{ color: 'var(--text-2)', fontSize: 10, marginTop: 2 }} className="mono">
+        <div style={{ color: d.pnl >= 0 ? 'var(--green)' : 'var(--red)', fontSize: 10, marginTop: 2 }} className="mono">
           Trade P&L: {d.pnl >= 0 ? '+' : ''}${d.pnl?.toFixed(2)}
         </div>
       )}
@@ -237,46 +237,45 @@ export default function MainChartPanel({ engine, equityData, marketChart, loadin
             <AreaChart data={candleData} margin={{ top: 12, right: 12, bottom: 4, left: 4 }}>
               <defs>
                 <linearGradient id="priceFill" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#4cc38a" stopOpacity={0.22} />
-                  <stop offset="100%" stopColor="#4cc38a" stopOpacity={0.0} />
+                  <stop offset="0%" stopColor="#a67c38" stopOpacity={0.25} />
+                  <stop offset="100%" stopColor="#a67c38" stopOpacity={0.0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid stroke="rgba(238, 240, 245, 0.04)" vertical={false} />
+              <CartesianGrid stroke="rgba(140, 110, 60, 0.15)" strokeDasharray="3 3" vertical={false} />
               <XAxis 
                 dataKey="time" 
-                tick={{ fontSize: 10, fill: 'var(--text-3)', fontFamily: 'JetBrains Mono, monospace' }}
-                axisLine={false}
+                tick={{ fontSize: 10, fill: '#6e5d42', fontFamily: 'JetBrains Mono, monospace' }}
+                axisLine={{ stroke: 'rgba(140, 110, 60, 0.25)' }}
                 tickLine={false}
               />
               <YAxis
                 domain={['auto', 'auto']}
                 orientation="right"
-                tick={{ fontSize: 10, fill: 'var(--text-3)', fontFamily: 'JetBrains Mono, monospace' }}
+                tick={{ fontSize: 10, fill: '#6e5d42', fontFamily: 'JetBrains Mono, monospace' }}
                 tickLine={false}
-                axisLine={false}
+                axisLine={{ stroke: 'rgba(140, 110, 60, 0.25)' }}
                 tickFormatter={v => `$${Math.round(v)}`}
                 width={56}
               />
               <Tooltip content={<MarketTooltip />} />
-              <ReferenceLine y={spotPrice} stroke="#4cc38a" strokeDasharray="3 3" opacity={0.6} />
-              <ReferenceLine y={ema200} stroke="#38bdf8" strokeDasharray="4 4" opacity={0.8} />
+              <ReferenceLine y={spotPrice} stroke="#1e1b16" strokeDasharray="3 3" opacity={0.5} />
+              <ReferenceLine y={ema200} stroke="#a67c38" strokeDasharray="4 4" opacity={0.8} />
               
               <Area
                 type="monotone"
                 dataKey="close"
-                stroke="#4cc38a"
-                strokeWidth={1.8}
+                stroke="#1e1b16"
+                strokeWidth={2.0}
                 fill="url(#priceFill)"
                 dot={false}
-                activeDot={{ r: 3, fill: '#4cc38a', stroke: 'var(--bg-card)', strokeWidth: 1 }}
+                activeDot={{ r: 4, fill: '#a67c38', stroke: '#1e1b16', strokeWidth: 1.5 }}
               />
               <Line
                 type="monotone"
                 dataKey="ema"
-                stroke="#38bdf8"
-                strokeWidth={1.2}
+                stroke="#a67c38"
+                strokeWidth={2.0}
                 dot={false}
-                strokeDasharray="4 4"
               />
             </AreaChart>
           </ResponsiveContainer>

@@ -9,6 +9,7 @@ import AuthCallback from './pages/AuthCallback';
 import { useLiveData } from './hooks/useLiveData';
 import Header from './components/Header';
 import MarketRibbon from './components/MarketRibbon';
+import TopMetricStrip from './components/TopMetricStrip';
 import MainChartPanel from './components/MainChartPanel';
 import AIExecutionDesk from './components/AIExecutionDesk';
 import TerminalDock from './components/TerminalDock';
@@ -128,6 +129,7 @@ function DashboardView() {
         <div className="terminal-workspace">
           {/* ── Left Column: Live Chart + Dock ── */}
           <div className="terminal-left-column">
+            <TopMetricStrip stats={stats} currency={stats?.currency || 'INR'} />
             <MainChartPanel 
               engine={engine} 
               equityData={data?.equity} 

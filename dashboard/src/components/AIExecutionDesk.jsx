@@ -274,29 +274,41 @@ export default function AIExecutionDesk({ token, engine, stats }) {
       <div className="desk-subpanel">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
           <span style={{ fontSize: 11, color: 'var(--text-2)' }}>Model Conviction</span>
-          <span style={{ fontSize: 12, fontWeight: 500, color: isApproved ? 'var(--green)' : 'var(--yellow)' }} className="mono">
+          <span style={{ fontSize: 13, fontWeight: 700, color: isApproved ? 'var(--green)' : 'var(--amber)' }} className="mono">
             {rfProbPct}%
           </span>
         </div>
 
-        <div className="conviction-track">
-          <div 
-            className="conviction-fill" 
-            style={{ 
-              width: `${Math.min(100, Math.max(0, rfProbRaw * 100))}%`,
-              backgroundColor: isApproved ? 'var(--green)' : 'var(--yellow)'
-            }} 
-          />
-          <div 
-            className="conviction-threshold" 
-            style={{ left: `${minThreshold}%` }} 
-            title={`Threshold: ${minThreshold}%`} 
-          />
+        <div className="conviction-track-wrapper">
+          <div className="conviction-track">
+            <div 
+              className="conviction-fill" 
+              style={{ 
+                width: `${Math.min(100, Math.max(0, rfProbRaw * 100))}%`,
+                background: isApproved 
+                  ? 'linear-gradient(90deg, #b8860b 0%, #2e7d32 100%)' 
+                  : 'linear-gradient(90deg, #a83232 0%, #b8860b 100%)'
+              }} 
+            />
+            <div 
+              className="conviction-threshold" 
+              style={{ left: `${minThreshold}%` }} 
+              title={`Cutoff: ${minThreshold.toFixed(0)}%`} 
+            />
+            {/* Vintage Skeuomorphic Brass Needle Indicator */}
+            <div 
+              className="conviction-needle" 
+              style={{ left: `${Math.min(98, Math.max(2, rfProbRaw * 100))}%` }}
+              title={`Confidence: ${rfProbPct}%`}
+            >
+              <div className="needle-pointer" />
+            </div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-3)', fontFamily: 'JetBrains Mono, monospace' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-3)', fontFamily: 'JetBrains Mono, monospace', marginTop: 4 }}>
           <span>Chop (0%)</span>
-          <span style={{ color: 'var(--text-2)' }}>Cutoff: {minThreshold.toFixed(0)}%</span>
+          <span style={{ color: 'var(--text-2)', fontWeight: 600 }}>Cutoff: {minThreshold.toFixed(0)}%</span>
           <span>Conviction (100%)</span>
         </div>
 
@@ -504,88 +516,93 @@ export default function AIExecutionDesk({ token, engine, stats }) {
           </div>
         )}
 
-        <div style={{ fontSize: 11, color: 'var(--text-2)', marginBottom: 6, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <span>Active Orders ({openPositions.length})</span>
-          {openPositions.length > 0 && <span className="mono" style={{ color: 'var(--green)', fontSize: 10 }}>Trailing SL Active</span>}
-        </div>
+        <div className="active-orders-dock">
+          <div className="active-orders-header">
+            <div className="active-orders-title-wrap">
+              <span className="active-orders-badge">{openPositions.length}</span>
+              <span className="active-orders-title">Active Orders ({openPositions.length})</span>
+            </div>
+            {openPositions.length > 0 && <span className="mono trailing-sl-tag">Trailing SL Active</span>}
+          </div>
 
-        {openPositions.length === 0 ? (
-          <div className="radar-status-box">
-            <div className="radar-status-item">
-              <span className="dot-green" />
-              <span>Bridge: MT5 connected (Gold XAUUSD)</span>
+          {openPositions.length === 0 ? (
+            <div className="radar-status-box">
+              <div className="radar-status-item">
+                <span className="dot-green" />
+                <span>Bridge: MT5 connected (Gold XAUUSD)</span>
+              </div>
+              <div className="radar-status-item">
+                <span className="dot-green" />
+                <span>Spread: 0.20 within limits</span>
+              </div>
+              {(engine?.limit_reached || (stats?.today_trades >= (engine?.max_daily_trades || 12))) ? (
+                <div className="radar-status-item">
+                  <span className="dot-amber" />
+                  <span style={{ color: '#d97706', fontWeight: 600 }}>
+                    Trading Paused: Daily limit ({stats?.today_trades || 0}/{engine?.max_daily_trades || 12}) reached
+                  </span>
+                </div>
+              ) : (engine?.cooldown_left && engine.cooldown_left > 0) ? (
+                <div className="radar-status-item">
+                  <span className="dot-cyan" />
+                  <span style={{ color: '#0891b2', fontWeight: 600 }}>
+                    Cooldown: {engine.cooldown_left}s remaining before next scan
+                  </span>
+                </div>
+              ) : (
+                <div className="radar-status-item">
+                  <span className="dot-pulse" />
+                  <span>Scanning M1 candle closure for setup</span>
+                </div>
+              )}
             </div>
-            <div className="radar-status-item">
-              <span className="dot-green" />
-              <span>Spread: 0.20 within limits</span>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table className="terminal-table dark-dock-table">
+                <thead>
+                  <tr>
+                    <th>Ticket</th>
+                    <th>Side</th>
+                    <th>Vol</th>
+                    <th>Entry</th>
+                    <th>P&L</th>
+                    <th style={{ textAlign: 'right' }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {openPositions.map((pos) => {
+                    const pnl = pos.profit !== undefined ? pos.profit : 0;
+                    const isBuy = pos.type === 0 || pos.type === 'BUY';
+                    return (
+                      <tr key={pos.ticket}>
+                        <td className="mono">#{pos.ticket}</td>
+                        <td>
+                          <span className={`side-tag ${isBuy ? 'buy' : 'sell'}`}>
+                            {isBuy ? 'Buy' : 'Sell'}
+                          </span>
+                        </td>
+                        <td className="mono">{pos.volume}</td>
+                        <td className="mono">${pos.price_open?.toFixed(2) || '—'}</td>
+                        <td className={`mono ${pnl >= 0 ? 'positive' : 'negative'}`} style={{ fontWeight: 600 }}>
+                          {formatCurrency(pnl, stats?.currency, true)}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="close-ticket-btn"
+                            onClick={() => handleCloseTicket(pos.ticket)}
+                          >
+                            Close
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-            {(engine?.limit_reached || (stats?.today_trades >= (engine?.max_daily_trades || 12))) ? (
-              <div className="radar-status-item">
-                <span className="dot-amber" />
-                <span style={{ color: 'var(--amber, #f59e0b)', fontWeight: 600 }}>
-                  Trading Paused: Daily limit ({stats?.today_trades || 0}/{engine?.max_daily_trades || 12}) reached
-                </span>
-              </div>
-            ) : (engine?.cooldown_left && engine.cooldown_left > 0) ? (
-              <div className="radar-status-item">
-                <span className="dot-cyan" />
-                <span style={{ color: 'var(--cyan, #06b6d4)', fontWeight: 600 }}>
-                  Cooldown: {engine.cooldown_left}s remaining before next scan
-                </span>
-              </div>
-            ) : (
-              <div className="radar-status-item">
-                <span className="dot-pulse" />
-                <span>Scanning M1 candle closure for setup</span>
-              </div>
-            )}
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="terminal-table">
-              <thead>
-                <tr>
-                  <th>Ticket</th>
-                  <th>Side</th>
-                  <th>Vol</th>
-                  <th>Entry</th>
-                  <th>P&L</th>
-                  <th style={{ textAlign: 'right' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {openPositions.map((pos) => {
-                  const pnl = pos.profit !== undefined ? pos.profit : 0;
-                  const isBuy = pos.type === 0 || pos.type === 'BUY';
-                  return (
-                    <tr key={pos.ticket}>
-                      <td className="mono">#{pos.ticket}</td>
-                      <td>
-                        <span className={`side-tag ${isBuy ? 'buy' : 'sell'}`}>
-                          {isBuy ? 'Buy' : 'Sell'}
-                        </span>
-                      </td>
-                      <td className="mono">{pos.volume}</td>
-                      <td className="mono">${pos.price_open?.toFixed(2) || '—'}</td>
-                      <td className={`mono ${pnl >= 0 ? 'positive' : 'negative'}`} style={{ fontWeight: 500 }}>
-                        {formatCurrency(pnl, stats?.currency, true)}
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button
-                          type="button"
-                          className="close-ticket-btn"
-                          onClick={() => handleCloseTicket(pos.ticket)}
-                        >
-                          Close
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
