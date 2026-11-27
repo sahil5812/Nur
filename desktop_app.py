@@ -121,8 +121,8 @@ SPLASH_HTML = """
   
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-    background: #0a0d14;
-    color: #e2e8f0;
+    background: #f3efe6;
+    color: #1e1b16;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -133,6 +133,11 @@ SPLASH_HTML = """
   .splash {
     text-align: center;
     animation: fadeIn 0.3s ease-out;
+    background: #faf7f0;
+    border: 1.5px solid #c8a96e;
+    border-radius: 12px;
+    padding: 36px 48px;
+    box-shadow: 0 10px 30px rgba(70, 50, 20, 0.15);
   }
 
   @keyframes fadeIn {
@@ -141,12 +146,12 @@ SPLASH_HTML = """
   }
 
   .logo-ring {
-    width: 80px; height: 80px;
-    margin: 0 auto 28px;
+    width: 76px; height: 76px;
+    margin: 0 auto 24px;
     border-radius: 50%;
-    border: 3px solid transparent;
-    border-top-color: #6366f1;
-    border-right-color: #8b5cf6;
+    border: 3px solid rgba(200, 169, 110, 0.25);
+    border-top-color: #9e7529;
+    border-right-color: #c8a96e;
     animation: spin 1s linear infinite;
     display: flex;
     align-items: center;
@@ -155,9 +160,9 @@ SPLASH_HTML = """
 
   .logo-ring::after {
     content: 'N';
-    font-size: 28px;
+    font-size: 26px;
     font-weight: 700;
-    color: #6366f1;
+    color: #9e7529;
     animation: spin-reverse 1s linear infinite;
   }
 
@@ -168,28 +173,28 @@ SPLASH_HTML = """
     font-size: 22px;
     font-weight: 700;
     margin-bottom: 6px;
-    background: linear-gradient(135deg, #6366f1, #a78bfa);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: #1e1b16;
+    letter-spacing: -0.3px;
   }
 
   .subtitle {
     font-size: 13px;
-    color: #64748b;
-    margin-bottom: 32px;
+    color: #6e5d42;
+    margin-bottom: 24px;
   }
 
   .status {
     font-size: 12px;
-    color: #475569;
-    letter-spacing: 0.5px;
+    color: #4a3e2e;
+    letter-spacing: 0.3px;
+    font-weight: 500;
   }
 
   .status .dot {
     display: inline-block;
-    width: 6px; height: 6px;
+    width: 7px; height: 7px;
     border-radius: 50%;
-    background: #6366f1;
+    background: #2e7d32;
     margin-right: 6px;
     animation: pulse 1.5s ease-in-out infinite;
   }
@@ -200,19 +205,19 @@ SPLASH_HTML = """
   }
 
   .progress-bar {
-    width: 200px;
-    height: 3px;
-    background: #1e293b;
-    border-radius: 3px;
-    margin: 20px auto 0;
+    width: 220px;
+    height: 4px;
+    background: rgba(160, 130, 80, 0.2);
+    border-radius: 4px;
+    margin: 18px auto 0;
     overflow: hidden;
   }
 
   .progress-fill {
     height: 100%;
     width: 30%;
-    background: linear-gradient(90deg, #6366f1, #a78bfa);
-    border-radius: 3px;
+    background: linear-gradient(90deg, #9e7529, #c8a96e);
+    border-radius: 4px;
     animation: loading 2s ease-in-out infinite;
   }
 
@@ -226,8 +231,8 @@ SPLASH_HTML = """
 <body>
   <div class="splash">
     <div class="logo-ring"></div>
-    <h1>NUR Trading Bot</h1>
-    <p class="subtitle">Initializing trading engine...</p>
+    <h1>NUR Trading Terminal</h1>
+    <p class="subtitle">Initializing Institutional Engine...</p>
     <p class="status"><span class="dot"></span>Starting services</p>
     <div class="progress-bar"><div class="progress-fill"></div></div>
   </div>
@@ -248,7 +253,7 @@ SPLASH_HTML = """
         setTimeout(checkBackend, CHECK_INTERVAL);
       } else {
         document.querySelector('.status').innerHTML = 
-          '<span style="color:#ef4444">⚠ Backend taking longer than expected...</span>';
+          '<span style="color:#a83232">⚠ Backend taking longer than expected...</span>';
       }
     }
 
@@ -573,13 +578,13 @@ def main():
     # ── INSTANT WINDOW: Show splash screen immediately ────────────
     # The window renders in under 1 second while all services boot in background
     window = webview.create_window(
-        "Nur Trading Bot Dashboard",
+        "Nur Institutional Trading Terminal",
         html=SPLASH_HTML,
-        width=1200,
-        height=800,
+        width=1280,
+        height=820,
         resizable=True,
         zoomable=True,
-        background_color="#0a0d14"
+        background_color="#f3efe6"
     )
     
     # When the window is actually closed (destroyed), perform full shutdown
